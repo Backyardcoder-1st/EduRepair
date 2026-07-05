@@ -1,13 +1,13 @@
 import flet as ft
-import json
-import os
+import requests
 
 class AppController:
     def __init__(self, page: ft.Page):
         self.page = page
         self.root = ft.Container()
 
-        self.file = "students.json"
+        # Linked directly to your active Firebase project
+        self.db_url = "https://brothers1goal-default-rtdb.firebaseio.com/students.json"
         self.students = self.load_data()
 
         # login
@@ -20,20 +20,29 @@ class AppController:
         self.new_name = ft.TextField(label="Tên học sinh")
         self.new_score = ft.TextField(label="Điểm")
 
-    # ================= DATA =================
+    # ================= CLOUD SYNC =================
     def load_data(self):
-        if os.path.exists(self.file):
-            with open(self.file, "r", encoding="utf-8") as f:
-                return json.load(f)
+        try:
+            response = requests.get(self.db_url)
+            if response.status_code == 200 and response.json():
+                data = response.json()
+                if isinstance(data, dict):
+                    return list(data.values())
+                return [item for item in data if item is not None]
+        except Exception as e:
+            print(f"Database read error: {e}")
 
+        # Default fallback list if cloud starts completely blank
         return [
             {"id": "HS01", "name": "Nguyễn Văn A", "score": 8},
             {"id": "HS02", "name": "Trần Thị B", "score": 6},
         ]
 
     def save_data(self):
-        with open(self.file, "w", encoding="utf-8") as f:
-            json.dump(self.students, f, ensure_ascii=False, indent=2)
+        try:
+            requests.put(self.db_url, json=self.students)
+        except Exception as e:
+            print(f"Database write error: {e}")
 
     # ================= LOGIN =================
     def show_login(self):
@@ -59,11 +68,12 @@ class AppController:
 
     # ================= HOME =================
     def show_home(self):
+        self.students = self.load_data()
         avg = self.avg_score()
 
         self.root.content = ft.Column(
             [
-                ft.Text("HOME (NO ICON VERSION)", size=28, weight="bold"),
+                ft.Text("HOME (CLOUD VERSION)", size=28, weight="bold"),
                 ft.Text(f"📊 Điểm trung bình: {avg}"),
 
                 ft.ElevatedButton("Danh sách học sinh", on_click=self.show_list),
@@ -79,7 +89,6 @@ class AppController:
     # ================= LIST =================
     def show_list(self, e):
         rows = []
-
         for s in self.students:
             rows.append(
                 ft.Row(
@@ -107,7 +116,6 @@ class AppController:
                 *rows
             ]
         )
-
         self.page.update()
 
     # ================= ADD =================
@@ -131,24 +139,21 @@ class AppController:
                 "name": self.new_name.value,
                 "score": float(self.new_score.value)
             })
-
             self.save_data()
-            self.snack("Đã thêm học sinh")
+            self.snack("Đã lưu lên đám mây!")
             self.show_home()
-
         except:
             self.snack("Dữ liệu không hợp lệ!")
 
     # ================= EDIT =================
     def edit_student(self, sid):
         student = next(s for s in self.students if s["id"] == sid)
-
         score_input = ft.TextField(value=str(student["score"]))
 
         def save(e):
             student["score"] = float(score_input.value)
             self.save_data()
-            self.snack("Đã cập nhật")
+            self.snack("Đã cập nhật dữ liệu")
             self.show_list(None)
 
         self.root.content = ft.Column(
@@ -165,19 +170,17 @@ class AppController:
     def delete_student(self, sid):
         self.students = [s for s in self.students if s["id"] != sid]
         self.save_data()
-        self.snack("Đã xóa học sinh")
+        self.snack("Đã xóa khỏi hệ thống")
         self.show_list(None)
 
     # ================= EVALUATE =================
     def show_evaluate(self, e):
         view = [ft.Text("ĐÁNH GIÁ", size=22, weight="bold")]
-
         for s in self.students:
             status = "Giỏi" if s["score"] >= 8 else "Khá / TB"
             view.append(ft.Text(f"{s['name']} → {status}"))
 
         view.append(ft.ElevatedButton("⬅ Back", on_click=lambda e: self.show_home()))
-
         self.root.content = ft.Column(view)
         self.page.update()
 

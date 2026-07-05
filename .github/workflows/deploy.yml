@@ -34,7 +34,7 @@ jobs:
 
       - name: Compile Flet Web Distribution
         run: |
-          flet build web --yes
+          flet build web --base-url /EduRepair/ --yes
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3

@@ -1,12 +1,13 @@
 import flet as ft
 import json
 
+
 class AppController:
     def __init__(self, page: ft.Page):
         self.page = page
         self.root = ft.Container()
 
-        # Your live Firebase cloud link address (No Work Is No Bugs!)
+        # Your live Firebase cloud link address
         self.db_url = "https://brothers1goal-default-rtdb.firebaseio.com/students.json"
         self.students = []
 
@@ -27,7 +28,6 @@ class AppController:
     # ================= BROWSER-SAFE CLOUD SYNC =================
     async def load_data_async(self):
         try:
-            # Replaces os.path or requests to prevent browser sandboxing crashes
             response = await self.page.fetch_data_async(self.db_url, method="GET")
             if response and response.status_code == 200:
                 data = json.loads(response.body)
@@ -38,7 +38,7 @@ class AppController:
         except Exception as e:
             print(f"Cloud load error: {e}")
 
-        # Friend's original default starting lists if cloud is brand new
+        # Default starting values fallback
         return [
             {"id": "HS01", "name": "Nguyễn Văn A", "score": 8.0},
             {"id": "HS02", "name": "Trần Thị B", "score": 6.0},
@@ -46,7 +46,6 @@ class AppController:
 
     async def save_data_async(self):
         try:
-            # Syncs the array straight to brothers1goal workspace instantly
             await self.page.fetch_data_async(
                 self.db_url,
                 method="PUT",
@@ -91,7 +90,6 @@ class AppController:
 
     # ================= TRANG CHỦ =================
     async def show_home_async(self):
-        # Always fetch fresh records from cloud on home entry
         self.students = await self.load_data_async()
         average = self.avg_score()
 
@@ -120,7 +118,8 @@ class AppController:
                     [
                         ft.Text(f"ID: {student['id']} | Tên: {student['name']} | Điểm: {student['score']}"),
                         ft.ElevatedButton("Sửa", on_click=lambda e, sid=student["id"]: self.edit_student(sid)),
-                        ft.ElevatedButton("Xóa", on_click=lambda e, sid=student["id"]: self.page.run_task(self.delete_student_async, sid)),
+                        ft.ElevatedButton("Xóa", on_click=lambda e, sid=student["id"]: self.page.run_task(
+                            self.delete_student_async, sid)),
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 )
@@ -207,7 +206,9 @@ class AppController:
                 student["score"] = score
 
                 await self.save_data_async()
-                self.snack("Đã cập nhật học sinh lên mây")
+                self.snack("Đã cập nhật học sinh thành công!")
+
+                # Crucial fix: return cleanly to list view after backend finishes save task
                 self.show_list()
             except:
                 self.snack("Điểm không hợp lệ")
@@ -228,11 +229,11 @@ class AppController:
     async def delete_student_async(self, sid):
         self.students = [s for s in self.students if s["id"] != sid]
         await self.save_data_async()
-        self.snack("Đã xóa học sinh khỏi mây Cloud")
+        self.snack("Đã xóa học sinh khỏi hệ thống")
         self.show_list()
 
     # ================= ĐÁNH GIÁ HỌC SINH =================
-    def show_evaluate(self):
+    def show_evaluate(self, e):
         view = [ft.Text("ĐÁNH GIÁ HỌC SINH", size=24, weight="bold")]
 
         for student in self.students:
@@ -253,7 +254,7 @@ class AppController:
         self.page.update()
 
     # ================= THỐNG KÊ =================
-    def show_statistics(self):
+    def show_statistics(self, e):
         total = len(self.students)
         if total == 0:
             self.root.content = ft.Column([

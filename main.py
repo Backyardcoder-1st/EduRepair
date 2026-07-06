@@ -1,6 +1,7 @@
 import flet as ft
 from logic import AppController
 
+
 def main(page: ft.Page):
     page.title = "Student Management System"
     page.window_width = 900
@@ -9,9 +10,12 @@ def main(page: ft.Page):
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
 
     app = AppController(page)
+
+    # Hiển thị giao diện login đầu tiên
     app.show_login()
 
+    # Gắn root container vào page
     page.add(app.root)
 
-if __name__ == "__main__":
-    ft.app(target=main)
+
+ft.app(target=main, view=ft.AppView.WEB_BROWSER)

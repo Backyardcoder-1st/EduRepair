@@ -31,20 +31,24 @@ class AppController:
     # ================= LOAD DATA FROM CLOUD =================
     async def load_data_async(self):
         try:
-            # Safely fetch database array using browser web-requests
             res = await self.page.fetch_data_async(self.db_url, method="GET")
             if res and res.text and res.text != "null":
                 data = json.loads(res.text)
                 if isinstance(data, list):
                     self.students = [s for s in data if s is not None]
+                    print("--- DỮ LIỆU ĐÃ TẢI THÀNH CÔNG ---")
+                    print(f"Danh sách tài khoản: {self.students}")
                     return
                 elif isinstance(data, dict):
                     self.students = [v for v in data.values() if v is not None]
+                    print("--- DỮ LIỆU ĐÃ TẢI THÀNH CÔNG ---")
+                    print(f"Danh sách tài khoản: {self.students}")
                     return
         except Exception as e:
-            print(f"Cloud load error: {e}")
+            print(f"⚠️ LỖI KẾT NỐI CLOUD: {e}")
 
-        # Fallback starter mock data if the cloud is completely empty or offline
+        # Fallback dữ liệu tạm thời nếu Cloud mất mạng
+        print("⚠️ ĐANG DÙNG TÀI KHOẢN TẠM THỜI (OFFLINE)")
         self.students = [
             {"id": "HS01", "name": "Nguyễn Văn A", "class": "10A1", "password": "123456", "score": 8},
             {"id": "HS02", "name": "Trần Thị B", "class": "10A1", "password": "123456", "score": 6}
@@ -62,51 +66,48 @@ class AppController:
         except Exception as e:
             print(f"Cloud save error: {e}")
 
-        # ================= TRANG ĐĂNG NHẬP =================
-        async def show_login(self):
-            # Always fetch fresh database entries when coming back to log in screen
-            await self.load_data_async()
+    # ================= TRANG ĐĂNG NHẬP =================
+    async def show_login(self):
+        # Always fetch fresh database entries when coming back to login screen
+        await self.load_data_async()
 
-            self.username.value = ""
-            self.student_id.value = ""
-            self.password.value = ""
+        self.username.value = ""
+        self.student_id.value = ""
+        self.password.value = ""
 
-            self.root.content = ft.Column(
-                [
-                    ft.Text("HỆ THỐNG QUẢN LÝ HỌC SINH", size=28, weight="bold"),
-                    self.username,
-                    self.student_id,
-                    self.password,
-                    # FIX: Wrapped in self.page.run_task so the async button doesn't freeze!
-                    ft.ElevatedButton("Đăng nhập", on_click=lambda e: self.page.run_task(self.check_login)),
-                    ft.Divider(),
-                    ft.Text("Chưa có tài khoản?"),
-                    ft.TextButton("Đăng ký", on_click=lambda e: self.page.run_task(self.show_register))
-                ],
-                alignment=ft.MainAxisAlignment.CENTER,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER
-            )
-            self.page.update()
+        self.root.content = ft.Column(
+            [
+                ft.Text("HỆ THỐNG QUẢN LÝ HỌC SINH", size=28, weight="bold"),
+                self.username,
+                self.student_id,
+                self.password,
+                ft.ElevatedButton("Đăng nhập", on_click=lambda e: self.page.run_task(self.check_login)),
+                ft.Divider(),
+                ft.Text("Chưa có tài khoản?"),
+                ft.TextButton("Đăng ký", on_click=lambda e: self.page.run_task(self.show_register))
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER
+        )
+        self.page.update()
 
-        # ================= KIỂM TRA ĐĂNG NHẬP =================
-        async def check_login(self):
-            # Clean check to ensure no fields are empty strings
-            if not self.username.value or not self.student_id.value or not self.password.value:
-                self.snack("Vui lòng điền đầy đủ thông tin đăng nhập")
-                return
+    # ================= KIỂM TRA ĐĂNG NHẬP =================
+    async def check_login(self):
+        if not self.username.value or not self.student_id.value or not self.password.value:
+            self.snack("Vui lòng điền đầy đủ thông tin đăng nhập")
+            return
 
-            found_student = None
-            for student in self.students:
-                if student.get("id") == self.student_id.value:
-                    found_student = student
-                    break
+        found_student = None
+        for student in self.students:
+            if student.get("id") == self.student_id.value:
+                found_student = student
+                break
 
-            # Check if student exists AND the password matches
-            if found_student and str(found_student.get("password")) == str(self.password.value):
-                self.snack("Đăng nhập thành công")
-                await self.show_home()
-            else:
-                self.snack("Mã học sinh hoặc mật khẩu không chính xác")
+        if found_student and str(found_student.get("password")) == str(self.password.value):
+            self.snack("Đăng nhập thành công")
+            await self.show_home()
+        else:
+            self.snack("Mã học sinh hoặc mật khẩu không chính xác")
 
     # ================= TRANG ĐĂNG KÝ =================
     async def show_register(self):
@@ -124,7 +125,7 @@ class AppController:
                 self.register_class,
                 self.register_password,
                 self.register_confirm,
-                ft.ElevatedButton("Đăng ký", on_click=self.register),
+                ft.ElevatedButton("Đăng ký", on_click=lambda e: self.page.run_task(self.register)),
                 ft.TextButton("Quay lại", on_click=lambda e: self.page.run_task(self.show_login))
             ],
             alignment=ft.MainAxisAlignment.CENTER,
@@ -133,7 +134,7 @@ class AppController:
         self.page.update()
 
     # ================= XỬ LÝ ĐĂNG KÝ =================
-    async def register(self, e):
+    async def register(self):
         if self.register_name.value == "" or self.register_id.value == "" or self.register_class.value == "" or self.register_password.value == "":
             self.snack("Vui lòng nhập đầy đủ thông tin")
             return
@@ -210,13 +211,13 @@ class AppController:
                 self.new_id,
                 self.new_name,
                 self.new_score,
-                ft.ElevatedButton("Thêm học sinh", on_click=self.add_student),
+                ft.ElevatedButton("Thêm học sinh", on_click=lambda e: self.page.run_task(self.add_student)),
                 ft.ElevatedButton("Quay lại", on_click=lambda e: self.page.run_task(self.show_home))
             ]
         )
         self.page.update()
 
-    async def add_student(self, e):
+    async def add_student(self):
         if self.new_id.value == "" or self.new_name.value == "" or self.new_score.value == "":
             self.snack("Vui lòng nhập đầy đủ thông tin")
             return
@@ -254,7 +255,7 @@ class AppController:
         name_input = ft.TextField(label="Tên học sinh", value=student.get("name", ""))
         score_input = ft.TextField(label="Điểm", value=str(student.get("score", 0)))
 
-        async def save(e):
+        async def save_edit():
             if name_input.value == "":
                 self.snack("Tên học sinh không được để trống")
                 return
@@ -279,7 +280,7 @@ class AppController:
                 ft.Text(f"ID: {sid}"),
                 name_input,
                 score_input,
-                ft.ElevatedButton("Lưu", on_click=save),
+                ft.ElevatedButton("Lưu", on_click=lambda e: self.page.run_task(save_edit)),
                 ft.ElevatedButton("Quay lại", on_click=lambda e: self.page.run_task(self.show_list))
             ]
         )

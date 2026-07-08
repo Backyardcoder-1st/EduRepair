@@ -3,7 +3,7 @@ from logic import AppController
 
 
 def main(page: ft.Page):
-    page.title = "Student Management System"
+    page.title = "EduRepair"
     page.window_width = 900
     page.window_height = 650
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER

@@ -62,49 +62,51 @@ class AppController:
         except Exception as e:
             print(f"Cloud save error: {e}")
 
-    # ================= TRANG ĐĂNG NHẬP =================
-    async def show_login(self):
-        # Always fetch fresh database entries when coming back to login screen
-        await self.load_data_async()
+        # ================= TRANG ĐĂNG NHẬP =================
+        async def show_login(self):
+            # Always fetch fresh database entries when coming back to log in screen
+            await self.load_data_async()
 
-        self.username.value = ""
-        self.student_id.value = ""
-        self.password.value = ""
+            self.username.value = ""
+            self.student_id.value = ""
+            self.password.value = ""
 
-        self.root.content = ft.Column(
-            [
-                ft.Text("HỆ THỐNG QUẢN LÝ HỌC SINH", size=28, weight="bold"),
-                self.username,
-                self.student_id,
-                self.password,
-                ft.ElevatedButton("Đăng nhập", on_click=self.check_login),
-                ft.Divider(),
-                ft.Text("Chưa có tài khoản?"),
-                ft.TextButton("Đăng ký", on_click=lambda e: self.page.run_task(self.show_register))
-            ],
-            alignment=ft.MainAxisAlignment.CENTER,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER
-        )
-        self.page.update()
+            self.root.content = ft.Column(
+                [
+                    ft.Text("HỆ THỐNG QUẢN LÝ HỌC SINH", size=28, weight="bold"),
+                    self.username,
+                    self.student_id,
+                    self.password,
+                    # FIX: Wrapped in self.page.run_task so the async button doesn't freeze!
+                    ft.ElevatedButton("Đăng nhập", on_click=lambda e: self.page.run_task(self.check_login)),
+                    ft.Divider(),
+                    ft.Text("Chưa có tài khoản?"),
+                    ft.TextButton("Đăng ký", on_click=lambda e: self.page.run_task(self.show_register))
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER
+            )
+            self.page.update()
 
-    # ================= KIỂM TRA ĐĂNG NHẬP =================
-    async def check_login(self, e=None):
-        if self.username.value == "" or self.student_id.value == "" or self.password.value == "":
-            self.snack("Vui lòng điền đầy đủ thông tin đăng nhập")
-            return
+        # ================= KIỂM TRA ĐĂNG NHẬP =================
+        async def check_login(self):
+            # Clean check to ensure no fields are empty strings
+            if not self.username.value or not self.student_id.value or not self.password.value:
+                self.snack("Vui lòng điền đầy đủ thông tin đăng nhập")
+                return
 
-        found_student = None
-        for student in self.students:
-            if student.get("id") == self.student_id.value:
-                found_student = student
-                break
+            found_student = None
+            for student in self.students:
+                if student.get("id") == self.student_id.value:
+                    found_student = student
+                    break
 
-        # SỬA LỖI: Kiểm tra trùng khớp cả mã học sinh lẫn mật khẩu
-        if found_student and found_student.get("password") == self.password.value:
-            self.snack("Đăng nhập thành công")
-            await self.show_home()
-        else:
-            self.snack("Mã học sinh hoặc mật khẩu không chính xác")
+            # Check if student exists AND the password matches
+            if found_student and str(found_student.get("password")) == str(self.password.value):
+                self.snack("Đăng nhập thành công")
+                await self.show_home()
+            else:
+                self.snack("Mã học sinh hoặc mật khẩu không chính xác")
 
     # ================= TRANG ĐĂNG KÝ =================
     async def show_register(self):

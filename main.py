@@ -1,21 +1,22 @@
 import flet as ft
-from logic import AppController
+from logic import AppController  # Make sure this matches your logic file name
 
 
-def main(page: ft.Page):
+async def main(page: ft.Page):
+    # 1. Set up basic page properties
     page.title = "EduRepair"
-    page.window_width = 900
-    page.window_height = 650
-    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
+    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
 
-    app = AppController(page)
+    # 2. Initialize the controller
+    controller = AppController(page)
 
-    # Hiển thị giao diện login đầu tiên
-    app.show_login()
+    # 3. Add the root container to the screen layout
+    page.add(controller.root)
 
-    # Gắn root container vào page
-    page.add(app.root)
+    # 4. FIX: Use 'await' because show_login() is now an async function!
+    await controller.show_login()
 
 
-ft.app(target=main, view=ft.AppView.WEB_BROWSER)
+# Run the application as a web-compatible web app
+ft.app(target=main)

@@ -1,17 +1,21 @@
 import flet as ft
-from logic import AppController  # Assumes your logic file is named logic.py
+from logic import AppController
 
 
-async def main(page: ft.Page):
-    page.title = "HỆ THỐNG QUẢN LÝ HỌC SINH"
-    page.vertical_alignment = ft.MainAxisAlignment.CENTER
+def main(page: ft.Page):
+    page.title = "Student Management System"
+    page.window_width = 900
+    page.window_height = 650
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+    page.vertical_alignment = ft.MainAxisAlignment.CENTER
 
-    controller = AppController(page)
-    page.add(controller.root)
+    app = AppController(page)
 
-    await controller.show_login()
+    # Hiển thị giao diện login đầu tiên
+    app.show_login()
+
+    # Gắn root container vào page
+    page.add(app.root)
 
 
-# This forces Flet to open a native Windows desktop application window instantly
-ft.app(target=main, view=ft.AppView.FLET_APP)
+ft.app(target=main, view=ft.AppView.WEB_BROWSER)

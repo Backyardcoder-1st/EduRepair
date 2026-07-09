@@ -28,7 +28,6 @@ class AppController:
             can_reveal_password=True
         )
 
-
         # ================= THÊM HỌC SINH =================
 
         self.new_id = ft.TextField(
@@ -42,7 +41,6 @@ class AppController:
         self.new_score = ft.TextField(
             label="Điểm"
         )
-
 
         # ================= ĐĂNG KÝ =================
 
@@ -70,21 +68,20 @@ class AppController:
             can_reveal_password=True
         )
 
-
     # ================= LOAD DATA =================
 
     def load_data(self):
 
-        if os.path.exists(self.file):
-
-            with open(
-                self.file,
-                "r",
-                encoding="utf-8"
-            ) as f:
-
-                return json.load(f)
-
+        try:
+            if os.path.exists(self.file):
+                with open(
+                    self.file,
+                    "r",
+                    encoding="utf-8"
+                ) as f:
+                    return json.load(f)
+        except:
+            pass
 
         return [
             {
@@ -94,7 +91,6 @@ class AppController:
                 "password": "123456",
                 "score": 8
             },
-
             {
                 "id": "HS02",
                 "name": "Trần Thị B",
@@ -104,24 +100,26 @@ class AppController:
             }
         ]
 
-
     # ================= SAVE DATA =================
 
     def save_data(self):
 
-        with open(
-            self.file,
-            "w",
-            encoding="utf-8"
-        ) as f:
+        try:
+            with open(
+                self.file,
+                "w",
+                encoding="utf-8"
+            ) as f:
 
-            json.dump(
-                self.students,
-                f,
-                ensure_ascii=False,
-                indent=2
-            )
-
+                json.dump(
+                    self.students,
+                    f,
+                    ensure_ascii=False,
+                    indent=2
+                )
+        except:
+            # Không làm ứng dụng bị crash trên Web
+            pass
 
     # ================= TRANG ĐĂNG NHẬP =================
 
@@ -130,7 +128,6 @@ class AppController:
         self.username.value = ""
         self.student_id.value = ""
         self.password.value = ""
-
 
         self.root.content = ft.Column(
             [
@@ -141,27 +138,22 @@ class AppController:
                     weight="bold"
                 ),
 
-
                 self.username,
 
                 self.student_id,
 
                 self.password,
 
-
                 ft.ElevatedButton(
                     "Đăng nhập",
                     on_click=self.check_login
                 ),
 
-
                 ft.Divider(),
-
 
                 ft.Text(
                     "Chưa có tài khoản?"
                 ),
-
 
                 ft.TextButton(
                     "Đăng ký",
@@ -175,12 +167,9 @@ class AppController:
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
 
-
         self.page.update()
 
-
-
-    # ================= KIỂM TRA ĐĂNG NHẬP =================
+# ================= KIỂM TRA ĐĂNG NHẬP =================
 
     def check_login(self, e):
 
@@ -190,18 +179,28 @@ class AppController:
             )
             return
 
+        if self.student_id.value == "":
+            self.snack(
+                "Vui lòng nhập mã học sinh"
+            )
+            return
+
+        if self.password.value == "":
+            self.snack(
+                "Vui lòng nhập mật khẩu"
+            )
+            return
 
         found = False
 
-
         for student in self.students:
 
-            if student["id"] == self.student_id.value:
-
+            if (
+                student["id"] == self.student_id.value
+                and student["password"] == self.password.value
+            ):
                 found = True
-
                 break
-
 
         if found:
 
@@ -211,12 +210,12 @@ class AppController:
 
             self.show_home()
 
-
         else:
 
             self.snack(
                 "Sai thông tin đăng nhập"
             )
+
     # ================= TRANG ĐĂNG KÝ =================
 
     def show_register(self, e):
@@ -227,7 +226,6 @@ class AppController:
         self.register_password.value = ""
         self.register_confirm.value = ""
 
-
         self.root.content = ft.Column(
             [
 
@@ -236,7 +234,6 @@ class AppController:
                     size=28,
                     weight="bold"
                 ),
-
 
                 self.register_name,
 
@@ -248,12 +245,10 @@ class AppController:
 
                 self.register_confirm,
 
-
                 ft.ElevatedButton(
                     "Đăng ký",
                     on_click=self.register
                 ),
-
 
                 ft.TextButton(
                     "Quay lại",
@@ -267,10 +262,7 @@ class AppController:
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
 
-
         self.page.update()
-
-
 
     # ================= XỬ LÝ ĐĂNG KÝ =================
 
@@ -280,39 +272,30 @@ class AppController:
             self.snack("Vui lòng nhập họ tên")
             return
 
-
         if self.register_id.value == "":
             self.snack("Vui lòng nhập mã học sinh")
             return
-
 
         if self.register_class.value == "":
             self.snack("Vui lòng nhập lớp")
             return
 
-
         if self.register_password.value == "":
             self.snack("Vui lòng nhập mật khẩu")
             return
 
-
         if self.register_password.value != self.register_confirm.value:
-
             self.snack(
                 "Mật khẩu nhập lại không khớp"
             )
-
             return
+
         for student in self.students:
             if student["id"] == self.register_id.value:
-
                 self.snack(
                     "Mã học sinh đã tồn tại"
                 )
-
                 return
-
-
 
         self.students.append(
             {
@@ -324,25 +307,19 @@ class AppController:
             }
         )
 
-
         self.save_data()
-
 
         self.snack(
             "Đăng ký thành công"
         )
 
-
         self.show_login()
 
-
-
-    # ================= TRANG CHỦ =================
+# ================= TRANG CHỦ =================
 
     def show_home(self):
 
         average = self.avg_score()
-
 
         self.root.content = ft.Column(
             [
@@ -353,40 +330,33 @@ class AppController:
                     weight="bold"
                 ),
 
-
                 ft.Text(
                     f"Tổng số học sinh: {len(self.students)}"
                 ),
 
-
                 ft.Text(
                     f"Điểm trung bình: {average}"
                 ),
-
 
                 ft.ElevatedButton(
                     "Danh sách học sinh",
                     on_click=self.show_list
                 ),
 
-
                 ft.ElevatedButton(
                     "Thêm học sinh",
                     on_click=self.show_add
                 ),
-
 
                 ft.ElevatedButton(
                     "Đánh giá học sinh",
                     on_click=self.show_evaluate
                 ),
 
-
                 ft.ElevatedButton(
                     "Thống kê",
                     on_click=self.show_statistics
                 ),
-
 
                 ft.ElevatedButton(
                     "Đăng xuất",
@@ -400,10 +370,7 @@ class AppController:
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
 
-
         self.page.update()
-
-
 
     # ================= DANH SÁCH HỌC SINH =================
 
@@ -411,9 +378,7 @@ class AppController:
 
         controls = []
 
-
         for student in self.students:
-
 
             controls.append(
 
@@ -426,13 +391,11 @@ class AppController:
                             f"Điểm: {student['score']}"
                         ),
 
-
                         ft.ElevatedButton(
                             "Sửa",
                             on_click=lambda e, sid=student["id"]:
                             self.edit_student(sid)
                         ),
-
 
                         ft.ElevatedButton(
                             "Xóa",
@@ -448,8 +411,6 @@ class AppController:
 
             )
 
-
-
         controls.append(
 
             ft.ElevatedButton(
@@ -458,8 +419,6 @@ class AppController:
             )
 
         )
-
-
 
         self.root.content = ft.Column(
 
@@ -477,10 +436,7 @@ class AppController:
 
         )
 
-
         self.page.update()
-
-
 
     # ================= THÊM HỌC SINH =================
 
@@ -489,7 +445,6 @@ class AppController:
         self.new_id.value = ""
         self.new_name.value = ""
         self.new_score.value = ""
-
 
         self.root.content = ft.Column(
             [
@@ -500,19 +455,16 @@ class AppController:
                     weight="bold"
                 ),
 
-
                 self.new_id,
 
                 self.new_name,
 
                 self.new_score,
 
-
                 ft.ElevatedButton(
                     "Thêm học sinh",
                     on_click=self.add_student
                 ),
-
 
                 ft.ElevatedButton(
                     "Quay lại",
@@ -523,54 +475,35 @@ class AppController:
 
         )
 
-
         self.page.update()
-
-
 
     def add_student(self, e):
 
         if self.new_id.value == "":
-
             self.snack(
                 "Vui lòng nhập ID học sinh"
             )
-
             return
 
-
-
         if self.new_name.value == "":
-
             self.snack(
                 "Vui lòng nhập tên học sinh"
             )
-
             return
 
-
-
         if self.new_score.value == "":
-
             self.snack(
                 "Vui lòng nhập điểm"
             )
-
             return
-
-
 
         for student in self.students:
 
             if student["id"] == self.new_id.value:
-
                 self.snack(
                     "ID học sinh đã tồn tại"
                 )
-
                 return
-
-
 
         try:
 
@@ -578,16 +511,11 @@ class AppController:
                 self.new_score.value
             )
 
-
             if score < 0 or score > 10:
-
                 self.snack(
                     "Điểm phải từ 0 đến 10"
                 )
-
                 return
-
-
 
             self.students.append(
 
@@ -597,24 +525,24 @@ class AppController:
 
                     "name": self.new_name.value,
 
+                    # Giữ dữ liệu đồng nhất với đăng ký
+                    "class": "",
+
+                    "password": "123456",
+
                     "score": score
 
                 }
 
             )
 
-
             self.save_data()
-
 
             self.snack(
                 "Đã thêm học sinh"
             )
 
-
             self.show_home()
-
-
 
         except:
 
@@ -622,58 +550,41 @@ class AppController:
                 "Điểm không hợp lệ"
             )
 
-
-                # ================= SỬA HỌC SINH =================
+    # ================= SỬA HỌC SINH =================
 
     def edit_student(self, sid):
 
         student = None
 
-
         for s in self.students:
 
             if s["id"] == sid:
-
                 student = s
-
                 break
 
-
-
         if student is None:
-
             self.snack(
                 "Không tìm thấy học sinh"
             )
-
             return
-
-
 
         name_input = ft.TextField(
             label="Tên học sinh",
             value=student["name"]
         )
 
-
         score_input = ft.TextField(
             label="Điểm",
             value=str(student["score"])
         )
 
-
-
         def save(e):
 
             if name_input.value == "":
-
                 self.snack(
                     "Tên học sinh không được để trống"
                 )
-
                 return
-
-
 
             try:
 
@@ -681,41 +592,28 @@ class AppController:
                     score_input.value
                 )
 
-
                 if score < 0 or score > 10:
-
                     self.snack(
                         "Điểm phải từ 0 đến 10"
                     )
-
                     return
 
-
-
                 student["name"] = name_input.value
-
                 student["score"] = score
 
-
                 self.save_data()
-
 
                 self.snack(
                     "Cập nhật thành công"
                 )
 
-
                 self.show_list(None)
-
-
 
             except:
 
                 self.snack(
                     "Điểm không hợp lệ"
                 )
-
-
 
         self.root.content = ft.Column(
             [
@@ -726,23 +624,18 @@ class AppController:
                     weight="bold"
                 ),
 
-
                 ft.Text(
                     f"ID: {student['id']}"
                 ),
 
-
                 name_input,
 
-
                 score_input,
-
 
                 ft.ElevatedButton(
                     "Lưu",
                     on_click=save
                 ),
-
 
                 ft.ElevatedButton(
                     "Quay lại",
@@ -753,43 +646,31 @@ class AppController:
 
         )
 
-
         self.page.update()
 
-
-
-    # ================= XÓA HỌC SINH =================
+# ================= XÓA HỌC SINH =================
 
     def delete_student(self, sid):
 
         for student in self.students:
 
             if student["id"] == sid:
-
                 self.students.remove(student)
-
                 break
 
-
-
         self.save_data()
-
 
         self.snack(
             "Đã xóa học sinh"
         )
 
-
         self.show_list(None)
-
-
 
     # ================= ĐÁNH GIÁ HỌC SINH =================
 
     def show_evaluate(self, e):
 
         view = []
-
 
         view.append(
 
@@ -801,35 +682,25 @@ class AppController:
 
         )
 
-
-
         for student in self.students:
 
-
             score = student["score"]
-
-
 
             if score >= 8:
 
                 status = "Giỏi"
 
-
             elif score >= 6.5:
 
                 status = "Khá"
-
 
             elif score >= 5:
 
                 status = "Trung bình"
 
-
             else:
 
                 status = "Yếu"
-
-
 
             view.append(
 
@@ -838,8 +709,6 @@ class AppController:
                 )
 
             )
-
-
 
         view.append(
 
@@ -853,16 +722,11 @@ class AppController:
 
         )
 
-
-
         self.root.content = ft.Column(
             view
         )
 
-
         self.page.update()
-
-
 
     # ================= THỐNG KÊ =================
 
@@ -872,53 +736,48 @@ class AppController:
             self.students
         )
 
-
-
         if total == 0:
 
-            self.root.content = ft.Text(
-                "Không có dữ liệu"
+            self.root.content = ft.Column(
+                [
+                    ft.Text(
+                        "Không có dữ liệu",
+                        size=20
+                    ),
+                    ft.ElevatedButton(
+                        "Quay lại",
+                        on_click=lambda e: self.show_home()
+                    )
+                ]
             )
 
             self.page.update()
-
             return
-
-
 
         gioi = 0
         kha = 0
         trungbinh = 0
         yeu = 0
 
-
         for student in self.students:
 
-
             score = student["score"]
-
-
 
             if score >= 8:
 
                 gioi += 1
 
-
             elif score >= 6.5:
 
                 kha += 1
-
 
             elif score >= 5:
 
                 trungbinh += 1
 
-
             else:
 
                 yeu += 1
-
-
 
         self.root.content = ft.Column(
 
@@ -930,36 +789,29 @@ class AppController:
                     weight="bold"
                 ),
 
-
                 ft.Text(
                     f"Tổng học sinh: {total}"
                 ),
-
 
                 ft.Text(
                     f"Điểm trung bình: {self.avg_score()}"
                 ),
 
-
                 ft.Text(
                     f"Giỏi: {gioi}"
                 ),
-
 
                 ft.Text(
                     f"Khá: {kha}"
                 ),
 
-
                 ft.Text(
                     f"Trung bình: {trungbinh}"
                 ),
 
-
                 ft.Text(
                     f"Yếu: {yeu}"
                 ),
-
 
                 ft.ElevatedButton(
                     "Quay lại",
@@ -970,36 +822,24 @@ class AppController:
 
         )
 
-
         self.page.update()
 
-
-
-    # ================= TÍNH ĐIỂM TRUNG BÌNH =================
+# ================= TÍNH ĐIỂM TRUNG BÌNH =================
 
     def avg_score(self):
 
         if len(self.students) == 0:
-
             return 0
-
-
 
         total = 0
 
-
         for student in self.students:
-
             total += student["score"]
-
-
 
         return round(
             total / len(self.students),
             2
         )
-
-
 
     # ================= THÔNG BÁO =================
 
@@ -1011,8 +851,6 @@ class AppController:
 
         )
 
-
         self.page.snack_bar.open = True
-
 
         self.page.update()

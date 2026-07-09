@@ -9,6 +9,9 @@ class AppController:
         self.page = page
         self.root = ft.Container()
 
+        # 🔴 THAY LINK FIREBASE CỦA BẠN VÀO ĐÂY (Phải có đuôi .json ở cuối)
+        self.db_url = "https://brothers1goal-default-rtdb.firebaseio.com/.json"
+
         self.file = "students.json"
         self.students = self.load_data()
 
@@ -72,6 +75,27 @@ class AppController:
 
     def load_data(self):
 
+        # 1. Tải dữ liệu từ mạng (Firebase Cloud) để tất cả mọi người đồng bộ chung dữ liệu
+        try:
+            import urllib.request
+            req = urllib.request.Request(self.db_url, method="GET")
+            with urllib.request.urlopen(req, timeout=5) as response:
+                cloud_data = json.loads(response.read().decode("utf-8"))
+                if cloud_data is not None:
+                    return cloud_data
+        except:
+            pass
+
+        # 2. Dự phòng: Thử tải dữ liệu từ bộ nhớ Trình duyệt Web nếu mất mạng
+        try:
+            import js
+            web_data = js.localStorage.getItem("students_storage_data")
+            if web_data:
+                return json.loads(web_data)
+        except:
+            pass
+
+        # 3. Dự phòng: Thử tải từ file json cục bộ nếu chạy offline trên máy tính
         try:
             if os.path.exists(self.file):
                 with open(
@@ -104,6 +128,29 @@ class AppController:
 
     def save_data(self):
 
+        # 1. Gửi dữ liệu lên Cloud (Firebase) để cập nhật trực tiếp cho tất cả thiết bị khác
+        try:
+            import urllib.request
+            req = urllib.request.Request(
+                self.db_url,
+                data=json.dumps(self.students, ensure_ascii=False).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="PUT"
+            )
+            with urllib.request.urlopen(req, timeout=5) as response:
+                pass
+        except:
+            pass
+
+        # 2. Dự phòng: Lưu vào bộ nhớ Trình duyệt Web của riêng máy này
+        try:
+            import js
+            json_string = json.dumps(self.students, ensure_ascii=False)
+            js.localStorage.setItem("students_storage_data", json_string)
+        except:
+            pass
+
+        # 3. Dự phòng: Lưu vào file json cục bộ nếu đang chạy trên PyCharm máy tính
         try:
             with open(
                 self.file,
@@ -118,7 +165,6 @@ class AppController:
                     indent=2
                 )
         except:
-            # Không làm ứng dụng bị crash trên Web
             pass
 
     # ================= TRANG ĐĂNG NHẬP =================

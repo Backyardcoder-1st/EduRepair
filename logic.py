@@ -10,7 +10,7 @@ class AppController:
         self.root = ft.Container()
 
         # 🔴 THAY LINK FIREBASE CỦA BẠN VÀO ĐÂY (Phải có đuôi .json ở cuối)
-        self.db_url = "https://brothers1goal-default-rtdb.firebaseio.com/.json"
+        self.db_url = "https://brothers1goal-default-rtdb.firebaseio.com/students.json"
 
         self.file = "students.json"
         self.students = self.load_data()
@@ -71,101 +71,95 @@ class AppController:
             can_reveal_password=True
         )
 
-    # ================= LOAD DATA =================
+        # ================= LOAD DATA =================
 
-    def load_data(self):
-
-        # 1. Tải dữ liệu từ mạng (Firebase Cloud) để tất cả mọi người đồng bộ chung dữ liệu
-        try:
-            import urllib.request
-            req = urllib.request.Request(self.db_url, method="GET")
-            with urllib.request.urlopen(req, timeout=5) as response:
-                cloud_data = json.loads(response.read().decode("utf-8"))
-                if cloud_data is not None:
-                    return cloud_data
-        except:
-            pass
-
-        # 2. Dự phòng: Thử tải dữ liệu từ bộ nhớ Trình duyệt Web nếu mất mạng
-        try:
-            import js
-            web_data = js.localStorage.getItem("students_storage_data")
-            if web_data:
-                return json.loads(web_data)
-        except:
-            pass
-
-        # 3. Dự phòng: Thử tải từ file json cục bộ nếu chạy offline trên máy tính
-        try:
-            if os.path.exists(self.file):
-                with open(
-                    self.file,
-                    "r",
-                    encoding="utf-8"
-                ) as f:
-                    return json.load(f)
-        except:
-            pass
-
-        return [
-            {
-                "id": "HS01",
-                "name": "Nguyễn Văn A",
-                "class": "10A1",
-                "password": "123456",
-                "score": 8
-            },
-            {
-                "id": "HS02",
-                "name": "Trần Thị B",
-                "class": "10A1",
-                "password": "123456",
-                "score": 6
-            }
-        ]
-
-    # ================= SAVE DATA =================
-
-    def save_data(self):
-
-        # 1. Gửi dữ liệu lên Cloud (Firebase) để cập nhật trực tiếp cho tất cả thiết bị khác
-        try:
-            import urllib.request
-            req = urllib.request.Request(
-                self.db_url,
-                data=json.dumps(self.students, ensure_ascii=False).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
-                method="PUT"
-            )
-            with urllib.request.urlopen(req, timeout=5) as response:
+        def load_data(self):
+            # 1. DÀNH CHO ĐIỆN THOẠI / WEB: Thử tải dữ liệu bằng công cụ của Trình duyệt Web
+            try:
+                import js
+                xhr = js.XMLHttpRequest.new()
+                # Gọi trực tiếp link Firebase của bạn theo dạng đồng bộ
+                xhr.open("GET", self.db_url, False)
+                xhr.send()
+                if xhr.status == 200 and xhr.responseText:
+                    cloud_data = json.loads(xhr.responseText)
+                    if cloud_data is not None:
+                        return cloud_data
+            except:
                 pass
-        except:
-            pass
 
-        # 2. Dự phòng: Lưu vào bộ nhớ Trình duyệt Web của riêng máy này
-        try:
-            import js
-            json_string = json.dumps(self.students, ensure_ascii=False)
-            js.localStorage.setItem("students_storage_data", json_string)
-        except:
-            pass
+            # 2. DÀNH CHO PYCHARM: Thử tải dữ liệu từ Cloud bằng thư viện Python máy tính
+            try:
+                import urllib.request
+                req = urllib.request.Request(self.db_url, method="GET")
+                with urllib.request.urlopen(req, timeout=5) as response:
+                    cloud_data = json.loads(response.read().decode("utf-8"))
+                    if cloud_data is not None:
+                        return cloud_data
+            except:
+                pass
 
-        # 3. Dự phòng: Lưu vào file json cục bộ nếu đang chạy trên PyCharm máy tính
-        try:
-            with open(
-                self.file,
-                "w",
-                encoding="utf-8"
-            ) as f:
+            # 3. DỰ PHÒNG OFFLINE: Đọc từ file JSON cục bộ trên máy tính nếu mất mạng
+            try:
+                if os.path.exists(self.file):
+                    with open(self.file, "r", encoding="utf-8") as f:
+                        return json.load(f)
+            except:
+                pass
 
-                json.dump(
-                    self.students,
-                    f,
-                    ensure_ascii=False,
-                    indent=2
+            # Dữ liệu mặc định ban đầu nếu tất cả các cổng kết nối đều thất bại
+            return [
+                {
+                    "id": "HS01",
+                    "name": "Nguyễn Văn A",
+                    "class": "10A1",
+                    "password": "123456",
+                    "score": 8
+                },
+                {
+                    "id": "HS02",
+                    "name": "Trần Thị B",
+                    "class": "10A1",
+                    "password": "123456",
+                    "score": 6
+                }
+            ]
+
+        # ================= SAVE DATA =================
+
+        def save_data(self):
+            # 1. DÀNH CHO ĐIỆN THOẠI / WEB: Gửi thẳng dữ liệu lên Firebase thông qua trình duyệt
+            try:
+                import js
+                xhr = js.XMLHttpRequest.new()
+                xhr.open("PUT", self.db_url, False)
+                xhr.setRequestHeader("Content-Type", "application/json")
+                json_string = json.dumps(self.students, ensure_ascii=False)
+                xhr.send(json_string)
+                return  # Thành công thì dừng lại luôn, không cần chạy các khối dưới
+            except:
+                pass
+
+            # 2. DÀNH CHO PYCHARM: Gửi dữ liệu lên Firebase bằng thư viện Python máy tính
+            try:
+                import urllib.request
+                req = urllib.request.Request(
+                    self.db_url,
+                    data=json.dumps(self.students, ensure_ascii=False).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="PUT"
                 )
-        except:
-            pass
+                with urllib.request.urlopen(req, timeout=5) as response:
+                    pass
+            except:
+                pass
+
+            # 3. DỰ PHÒNG BACKUP: Luôn lưu một bản vào file JSON trong PyCharm để kiểm tra mẫu
+            try:
+                with open(self.file, "w", encoding="utf-8") as f:
+                    json.dump(self.students, f, ensure_ascii=False, indent=2)
+            except:
+                pass
 
     # ================= TRANG ĐĂNG NHẬP =================
 

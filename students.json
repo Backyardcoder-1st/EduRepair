@@ -24,10 +24,17 @@
     "score": 10.0
   },
   {
+    "class": "",
     "id": "006",
     "name": "Đinh Văn Nghĩa",
-    "class": "",
     "password": "123456",
     "score": 7.8
+  },
+  {
+    "id": "007",
+    "name": "DINO2",
+    "class": "11A1",
+    "password": "0925524289",
+    "score": 0
   }
 ]

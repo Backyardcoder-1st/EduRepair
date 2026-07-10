@@ -1,40 +1,113 @@
 import flet as ft
 import json
 import os
+import urllib.request
 
 
 class AppController:
 
     def __init__(self, page: ft.Page):
+
         self.page = page
+
         self.root = ft.Container()
 
-        # 🔴 THAY LINK FIREBASE CỦA BẠN VÀO ĐÂY (Phải có đuôi .json ở cuối)
+        # Firebase
         self.db_url = "https://brothers1goal-default-rtdb.firebaseio.com/students.json"
 
+        # Backup local
         self.file = "students.json"
+
         self.students = []
 
-        # ================= ĐĂNG NHẬP =================
+        self.current_user = None
 
-        self.username = ft.TextField(
-            label="Tên lớp / học sinh"
+
+        # ================= LOGIN GIÁO VIÊN =================
+
+        self.teacher_name_login = ft.TextField(
+            label="Tên giáo viên"
         )
 
-        self.student_id = ft.TextField(
-            label="Mã học sinh"
-        )
-
-        self.password = ft.TextField(
+        self.teacher_password_login = ft.TextField(
             label="Mật khẩu",
             password=True,
             can_reveal_password=True
         )
 
+        self.teacher_key_login = ft.TextField(
+            label="Key giáo viên"
+        )
+
+
+        # ================= ĐĂNG KÝ GIÁO VIÊN =================
+
+        self.teacher_name = ft.TextField(
+            label="Họ tên giáo viên"
+        )
+
+        self.teacher_id = ft.TextField(
+            label="Mã giáo viên"
+        )
+
+        self.teacher_password = ft.TextField(
+            label="Mật khẩu",
+            password=True,
+            can_reveal_password=True
+        )
+
+        self.teacher_key = ft.TextField(
+            label="Key đăng ký"
+        )
+
+
+        # ================= LOGIN HỌC SINH =================
+
+        self.student_login_name = ft.TextField(
+            label="Tên học sinh"
+        )
+
+        self.student_login_password = ft.TextField(
+            label="Mật khẩu",
+            password=True,
+            can_reveal_password=True
+        )
+
+
+        # ================= ĐĂNG KÝ HỌC SINH =================
+
+        self.student_name = ft.TextField(
+            label="Họ tên học sinh"
+        )
+
+        self.student_class = ft.Dropdown(
+            label="Lớp",
+            options=[
+                ft.dropdown.Option("A1"),
+                ft.dropdown.Option("A2"),
+                ft.dropdown.Option("A3"),
+                ft.dropdown.Option("A4"),
+                ft.dropdown.Option("A5"),
+            ]
+        )
+
+        self.student_password = ft.TextField(
+            label="Mật khẩu",
+            password=True,
+            can_reveal_password=True
+        )
+
+        self.student_confirm = ft.TextField(
+            label="Nhập lại mật khẩu",
+            password=True,
+            can_reveal_password=True
+        )
+
+
         # ================= THÊM HỌC SINH =================
 
         self.new_id = ft.TextField(
-            label="ID học sinh"
+            label="Mã học sinh"
         )
 
         self.new_name = ft.TextField(
@@ -45,859 +118,1605 @@ class AppController:
             label="Điểm"
         )
 
-        # ================= ĐĂNG KÝ =================
 
-        self.register_name = ft.TextField(
-            label="Họ và tên"
+        # ================= NÂNG ĐIỂM =================
+
+        self.edit_student_id = ft.TextField(
+            label="Mã học sinh cần sửa điểm"
         )
 
-        self.register_id = ft.TextField(
-            label="Mã học sinh"
+        self.edit_score = ft.TextField(
+            label="Điểm mới"
         )
-
-        self.register_class = ft.TextField(
-            label="Lớp"
-        )
-
-        self.register_password = ft.TextField(
-            label="Mật khẩu",
-            password=True,
-            can_reveal_password=True
-        )
-
-        self.register_confirm = ft.TextField(
-            label="Nhập lại mật khẩu",
-            password=True,
-            can_reveal_password=True
-        )
-
-    # ================= LOAD DATA =================
+            # ================= LOAD DATA =================
 
     def load_data(self):
 
-        # 1. DÀNH CHO ĐIỆN THOẠI / WEB (Chạy trên trình duyệt)
         try:
-            import js
-            xhr = js.XMLHttpRequest.new()
-            xhr.open("GET", self.db_url, False)  # Đồng bộ hoàn toàn theo code cũ của bạn
-            xhr.send()
 
-            if xhr.status == 200:
-                cloud_data = json.loads(xhr.responseText)
-                if cloud_data is not None:
-                    self.students = cloud_data
+            req = urllib.request.Request(
+                self.db_url,
+                method="GET"
+            )
+
+            with urllib.request.urlopen(
+                req,
+                timeout=5
+            ) as response:
+
+                data = json.loads(
+                    response.read().decode("utf-8")
+                )
+
+                if data:
+
+                    self.students = data
                     return
+
+
         except:
+
             pass
 
-        # 2. DÀNH CHO PYCHARM (Chạy trên máy tính)
-        try:
-            import urllib.request
-            req = urllib.request.Request(self.db_url, method="GET")
-            with urllib.request.urlopen(req, timeout=5) as response:
-                cloud_data = json.loads(response.read().decode("utf-8"))
-                if cloud_data is not None:
-                    self.students = cloud_data
-                    return
-        except:
-            pass
 
-        # 3. DỰ PHÒNG OFFLINE (Nếu cả 2 cách trên thất bại)
+
+        # ===== LOAD FILE LOCAL =====
+
         try:
+
             if os.path.exists(self.file):
-                with open(self.file, "r", encoding="utf-8") as f:
+
+                with open(
+                    self.file,
+                    "r",
+                    encoding="utf-8"
+                ) as f:
+
                     self.students = json.load(f)
+
                     return
+
+
         except:
+
             pass
+
+
+
+        # ===== DATA MẪU =====
 
         self.students = [
+
+            {
+                "id": "GV01",
+                "name": "admin",
+                "password": "123456",
+                "key": "GV2026",
+                "role": "teacher"
+            },
+
+
             {
                 "id": "HS01",
                 "name": "Nguyễn Văn A",
-                "class": "10A1",
+                "class": "A1",
                 "password": "123456",
-                "score": 8
+                "score": 8,
+                "role": "student"
             },
+
+
             {
                 "id": "HS02",
                 "name": "Trần Thị B",
-                "class": "10A1",
+                "class": "A1",
                 "password": "123456",
-                "score": 6
+                "score": 6,
+                "role": "student"
             }
+
         ]
+
+
 
     # ================= SAVE DATA =================
 
     def save_data(self):
 
-        # 1. DÀNH CHO ĐIỆN THOẠI / WEB
-        try:
-            import js
-            xhr = js.XMLHttpRequest.new()
-            xhr.open("PUT", self.db_url, False)
-            xhr.setRequestHeader("Content-Type", "application/json")
-            json_string = json.dumps(self.students, ensure_ascii=False)
-            xhr.send(json_string)
-            return
-        except:
-            pass
+        # Firebase
 
-        # 2. DÀNH CHO PYCHARM
         try:
-            import urllib.request
+
             req = urllib.request.Request(
+
                 self.db_url,
-                data=json.dumps(self.students, ensure_ascii=False).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
+
+                data=json.dumps(
+                    self.students,
+                    ensure_ascii=False
+                ).encode("utf-8"),
+
+                headers={
+                    "Content-Type": "application/json"
+                },
+
                 method="PUT"
+
             )
-            with urllib.request.urlopen(req, timeout=5) as response:
-                pass
+
+
+            urllib.request.urlopen(
+                req,
+                timeout=5
+            )
+
+
         except:
+
             pass
 
-        # 3. DỰ PHÒNG BACKUP LOCAL
+
+
+        # Backup local
+
         try:
-            with open(self.file, "w", encoding="utf-8") as f:
-                json.dump(self.students, f, ensure_ascii=False, indent=2)
+
+            with open(
+                self.file,
+                "w",
+                encoding="utf-8"
+            ) as f:
+
+
+                json.dump(
+                    self.students,
+                    f,
+                    ensure_ascii=False,
+                    indent=2
+                )
+
+
         except:
+
             pass
 
-    # ================= TRANG ĐĂNG NHẬP =================
 
-    def show_login(self):
 
-        self.username.value = ""
-        self.student_id.value = ""
-        self.password.value = ""
+    # ================= CHỌN VAI TRÒ =================
+
+    def show_role_select(self):
 
         self.root.content = ft.Column(
+
             [
 
                 ft.Text(
-                    "HỆ THỐNG QUẢN LÝ HỌC SINH",
-                    size=28,
-                    weight="bold"
+                    "Bạn là ai?",
+                    size=30
                 ),
 
-                self.username,
-
-                self.student_id,
-
-                self.password,
 
                 ft.ElevatedButton(
+                    "Giáo viên",
+                    on_click=lambda e:
+                    self.show_teacher_login()
+                ),
+
+
+                ft.ElevatedButton(
+                    "Học sinh",
+                    on_click=lambda e:
+                    self.show_student_login()
+                )
+
+            ],
+
+            horizontal_alignment=
+            ft.CrossAxisAlignment.CENTER
+
+        )
+
+
+        self.page.update()
+            # ================= ĐĂNG NHẬP GIÁO VIÊN =================
+
+    def show_teacher_login(self):
+
+        def login(e):
+
+            for teacher in self.students:
+
+                if (
+
+                    teacher.get("role") == "teacher"
+
+                    and teacher.get("name")
+                    ==
+                    self.teacher_name_login.value
+
+                    and teacher.get("password")
+                    ==
+                    self.teacher_password_login.value
+
+                    and teacher.get("key")
+                    ==
+                    self.teacher_key_login.value
+
+                ):
+
+                    self.current_user = teacher
+
+                    self.show_teacher_home()
+
+                    return
+
+
+
+            self.show_message(
+                "Sai thông tin giáo viên"
+            )
+
+
+
+        self.root.content = ft.Column(
+
+            [
+
+                ft.Text(
+                    "Đăng nhập giáo viên",
+                    size=30
+                ),
+
+
+                self.teacher_name_login,
+
+
+                self.teacher_password_login,
+
+
+                self.teacher_key_login,
+
+
+                ft.ElevatedButton(
+
                     "Đăng nhập",
-                    on_click=self.check_login
+
+                    on_click=login
+
                 ),
 
-                ft.Divider(),
 
-                ft.Text(
-                    "Chưa có tài khoản?"
-                ),
-
-                ft.TextButton(
-                    "Đăng ký",
-                    on_click=self.show_register
-                )
-
-            ],
-
-            alignment=ft.MainAxisAlignment.CENTER,
-
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER
-        )
-
-        self.page.update()
-
-    # ================= KIỂM TRA ĐĂNG NHẬP =================
-
-    def check_login(self, e):
-
-        if self.username.value == "":
-            self.snack(
-                "Vui lòng nhập tên lớp hoặc học sinh"
-            )
-            return
-
-        if self.student_id.value == "":
-            self.snack(
-                "Vui lòng nhập mã học sinh"
-            )
-            return
-
-        if self.password.value == "":
-            self.snack(
-                "Vui lòng nhập mật khẩu"
-            )
-            return
-
-        found = False
-
-        for student in self.students:
-
-            # 🛠️ ĐÃ SỬA: Dùng .get() để tránh crash nếu dữ liệu thiếu trường 'id' hoặc 'password'
-            if (
-                student.get("id") == self.student_id.value
-                and student.get("password") == self.password.value
-            ):
-                found = True
-                break
-
-        if found:
-
-            self.snack(
-                "Đăng nhập thành công"
-            )
-
-            self.show_home()
-
-        else:
-
-            self.snack(
-                "Sai thông tin đăng nhập"
-            )
-
-    # ================= TRANG ĐĂNG KÝ =================
-
-    def show_register(self, e):
-
-        self.register_name.value = ""
-        self.register_id.value = ""
-        self.register_class.value = ""
-        self.register_password.value = ""
-        self.register_confirm.value = ""
-
-        self.root.content = ft.Column(
-            [
-
-                ft.Text(
-                    "ĐĂNG KÝ TÀI KHOẢN",
-                    size=28,
-                    weight="bold"
-                ),
-
-                self.register_name,
-
-                self.register_id,
-
-                self.register_class,
-
-                self.register_password,
-
-                self.register_confirm,
 
                 ft.ElevatedButton(
-                    "Đăng ký",
-                    on_click=self.register
+
+                    "Đăng ký giáo viên",
+
+                    on_click=lambda e:
+                    self.show_register_teacher()
+
                 ),
 
-                ft.TextButton(
+
+
+                ft.ElevatedButton(
+
                     "Quay lại",
-                    on_click=lambda e: self.show_login()
+
+                    on_click=lambda e:
+                    self.show_role_select()
+
                 )
 
             ],
 
-            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=
+            ft.CrossAxisAlignment.CENTER
 
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
+
 
         self.page.update()
 
-    # ================= XỬ LÝ ĐĂNG KÝ =================
 
-    def register(self, e):
 
-        if self.register_name.value == "":
-            self.snack("Vui lòng nhập họ tên")
-            return
+    # ================= ĐĂNG KÝ GIÁO VIÊN =================
 
-        if self.register_id.value == "":
-            self.snack("Vui lòng nhập mã học sinh")
-            return
+    def show_register_teacher(self):
 
-        if self.register_class.value == "":
-            self.snack("Vui lòng nhập lớp")
-            return
 
-        if self.register_password.value == "":
-            self.snack("Vui lòng nhập mật khẩu")
-            return
+        def register(e):
 
-        if self.register_password.value != self.register_confirm.value:
-            self.snack(
-                "Mật khẩu nhập lại không khớp"
-            )
-            return
+            new_teacher = {
 
-        for student in self.students:
-            if student.get("id") == self.register_id.value:
-                self.snack(
-                    "Mã học sinh đã tồn tại"
-                )
-                return
+                "id":
+                self.teacher_id.value,
 
-        self.students.append(
-            {
-                "id": self.register_id.value,
-                "name": self.register_name.value,
-                "class": self.register_class.value,
-                "password": self.register_password.value,
-                "score": 0
+
+                "name":
+                self.teacher_name.value,
+
+
+                "password":
+                self.teacher_password.value,
+
+
+                "key":
+                self.teacher_key.value,
+
+
+                "role":
+                "teacher"
+
             }
-        )
 
-        self.save_data()
-
-        self.snack(
-            "Đăng ký thành công"
-        )
-
-        self.show_login()
-
-    # ================= TRANG CHỦ =================
-
-    def show_home(self):
-
-        average = self.avg_score()
-
-        self.root.content = ft.Column(
-            [
-
-                ft.Text(
-                    "TRANG CHỦ",
-                    size=28,
-                    weight="bold"
-                ),
-
-                ft.Text(
-                    f"Tổng số học sinh: {len(self.students)}"
-                ),
-
-                ft.Text(
-                    f"Điểm trung bình: {average}"
-                ),
-
-                ft.ElevatedButton(
-                    "Danh sách học sinh",
-                    on_click=self.show_list
-                ),
-
-                ft.ElevatedButton(
-                    "Thêm học sinh",
-                    on_click=self.show_add
-                ),
-
-                ft.ElevatedButton(
-                    "Đánh giá học sinh",
-                    on_click=self.show_evaluate
-                ),
-
-                ft.ElevatedButton(
-                    "Thống kê",
-                    on_click=self.show_statistics
-                ),
-
-                ft.ElevatedButton(
-                    "Đăng xuất",
-                    on_click=lambda e: self.show_login()
-                )
-
-            ],
-
-            alignment=ft.MainAxisAlignment.CENTER,
-
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER
-        )
-
-        self.page.update()
-
-    # ================= DANH SÁCH HỌC SINH =================
-
-    def show_list(self, e):
-
-        controls = []
-
-        for student in self.students:
-
-            # 🛠️ ĐÃ SỬA: Dùng .get() để tránh lỗi hiển thị nếu học sinh thiếu trường dữ liệu
-            sid = student.get("id", "N/A")
-            sname = student.get("name", "Ẩn danh")
-            sscore = student.get("score", 0)
-
-            controls.append(
-
-                ft.Row(
-                    [
-
-                        ft.Text(
-                            f"ID: {sid} | "
-                            f"Tên: {sname} | "
-                            f"Điểm: {sscore}"
-                        ),
-
-                        ft.ElevatedButton(
-                            "Sửa",
-                            on_click=lambda e, sid=sid: self.edit_student(sid)
-                        ),
-
-                        ft.ElevatedButton(
-                            "Xóa",
-                            on_click=lambda e, sid=sid: self.delete_student(sid)
-                        )
-
-                    ],
-
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN
-
-                )
-
-            )
-
-        controls.append(
-
-            ft.ElevatedButton(
-                "Quay lại",
-                on_click=lambda e: self.show_home()
-            )
-
-        )
-
-        self.root.content = ft.Column(
-
-            [
-
-                ft.Text(
-                    "DANH SÁCH HỌC SINH",
-                    size=24,
-                    weight="bold"
-                ),
-
-                *controls
-
-            ]
-
-        )
-
-        self.page.update()
-
-    # ================= THÊM HỌC SINH =================
-
-    def show_add(self, e):
-
-        self.new_id.value = ""
-        self.new_name.value = ""
-        self.new_score.value = ""
-
-        self.root.content = ft.Column(
-            [
-
-                ft.Text(
-                    "THÊM HỌC SINH",
-                    size=24,
-                    weight="bold"
-                ),
-
-                self.new_id,
-
-                self.new_name,
-
-                self.new_score,
-
-                ft.ElevatedButton(
-                    "Thêm học sinh",
-                    on_click=self.add_student
-                ),
-
-                ft.ElevatedButton(
-                    "Quay lại",
-                    on_click=lambda e: self.show_home()
-                )
-
-            ]
-
-        )
-
-        self.page.update()
-
-    def add_student(self, e):
-
-        if self.new_id.value == "":
-            self.snack(
-                "Vui lòng nhập ID học sinh"
-            )
-            return
-
-        if self.new_name.value == "":
-            self.snack(
-                "Vui lòng nhập tên học sinh"
-            )
-            return
-
-        if self.new_score.value == "":
-            self.snack(
-                "Vui lòng nhập điểm"
-            )
-            return
-
-        for student in self.students:
-
-            if student.get("id") == self.new_id.value:
-                self.snack(
-                    "ID học sinh đã tồn tại"
-                )
-                return
-
-        try:
-
-            score = float(
-                self.new_score.value
-            )
-
-            if score < 0 or score > 10:
-                self.snack(
-                    "Điểm phải từ 0 đến 10"
-                )
-                return
 
             self.students.append(
-
-                {
-
-                    "id": self.new_id.value,
-
-                    "name": self.new_name.value,
-
-                    "class": "",
-
-                    "password": "123456",
-
-                    "score": score
-
-                }
-
+                new_teacher
             )
+
 
             self.save_data()
 
-            self.snack(
-                "Đã thêm học sinh"
+
+            self.show_message(
+                "Đăng ký giáo viên thành công"
             )
 
-            self.show_home()
 
-        except:
+            self.show_teacher_login()
 
-            self.snack(
-                "Điểm không hợp lệ"
+
+
+        self.root.content = ft.Column(
+
+            [
+
+                ft.Text(
+                    "Đăng ký giáo viên",
+                    size=30
+                ),
+
+
+                self.teacher_name,
+
+
+                self.teacher_id,
+
+
+                self.teacher_password,
+
+
+                self.teacher_key,
+
+
+                ft.ElevatedButton(
+
+                    "Đăng ký",
+
+                    on_click=register
+
+                ),
+
+
+
+                ft.ElevatedButton(
+
+                    "Quay lại",
+
+                    on_click=lambda e:
+                    self.show_teacher_login()
+
+                )
+
+            ],
+
+            horizontal_alignment=
+            ft.CrossAxisAlignment.CENTER
+
+        )
+
+
+        self.page.update()
+            # ================= ĐĂNG NHẬP HỌC SINH =================
+
+    def show_student_login(self):
+
+        def login(e):
+
+            for student in self.students:
+
+                if (
+
+                    student.get("role") == "student"
+
+                    and student.get("name")
+                    ==
+                    self.student_login_name.value
+
+                    and student.get("password")
+                    ==
+                    self.student_login_password.value
+
+                ):
+
+                    self.current_user = student
+
+                    self.show_student_home()
+
+                    return
+
+
+
+            self.show_message(
+                "Sai thông tin học sinh"
             )
 
-    # ================= SỬA HỌC SINH =================
 
-    def edit_student(self, sid):
 
-        student = None
+        self.root.content = ft.Column(
 
-        for s in self.students:
+            [
 
-            if s.get("id") == sid:
-                student = s
-                break
+                ft.Text(
+                    "Đăng nhập học sinh",
+                    size=30
+                ),
+
+
+                self.student_login_name,
+
+
+                self.student_login_password,
+
+
+                ft.ElevatedButton(
+
+                    "Đăng nhập",
+
+                    on_click=login
+
+                ),
+
+
+                ft.ElevatedButton(
+
+                    "Đăng ký học sinh",
+
+                    on_click=lambda e:
+                    self.show_register_student()
+
+                ),
+
+
+                ft.ElevatedButton(
+
+                    "Quay lại",
+
+                    on_click=lambda e:
+                    self.show_role_select()
+
+                )
+
+            ],
+
+            horizontal_alignment=
+            ft.CrossAxisAlignment.CENTER
+
+        )
+
+
+        self.page.update()
+
+
+
+    # ================= ĐĂNG KÝ HỌC SINH =================
+
+    def show_register_student(self):
+
+
+        def register(e):
+
+
+            if self.student_password.value != self.student_confirm.value:
+
+
+                self.show_message(
+                    "Mật khẩu không trùng"
+                )
+
+                return
+
+
+
+            new_student = {
+
+
+                "id":
+                self.create_student_id(),
+
+
+                "name":
+                self.student_name.value,
+
+
+                "class":
+                self.student_class.value,
+
+
+                "password":
+                self.student_password.value,
+
+
+                "score":
+                0,
+
+
+                "role":
+                "student"
+
+            }
+
+
+
+            self.students.append(
+                new_student
+            )
+
+
+            self.save_data()
+
+
+            self.show_message(
+                "Đăng ký học sinh thành công"
+            )
+
+
+            self.show_student_login()
+
+
+
+        self.root.content = ft.Column(
+
+            [
+
+                ft.Text(
+                    "Đăng ký học sinh",
+                    size=30
+                ),
+
+
+                self.student_name,
+
+
+                self.student_class,
+
+
+                self.student_password,
+
+
+                self.student_confirm,
+
+
+                ft.ElevatedButton(
+
+                    "Đăng ký",
+
+                    on_click=register
+
+                ),
+
+
+
+                ft.ElevatedButton(
+
+                    "Quay lại",
+
+                    on_click=lambda e:
+                    self.show_role_select()
+
+                )
+
+            ],
+
+            horizontal_alignment=
+            ft.CrossAxisAlignment.CENTER
+
+        )
+
+
+        self.page.update()
+            # ================= TRANG HỌC SINH =================
+
+    def show_student_home(self):
+
+        student = self.current_user
+
 
         if student is None:
-            self.snack(
-                "Không tìm thấy học sinh"
-            )
+
+            self.show_role_select()
+
             return
 
-        name_input = ft.TextField(
-            label="Tên học sinh",
-            value=student.get("name", "")
+
+
+        score = student.get(
+            "score",
+            0
         )
 
-        score_input = ft.TextField(
-            label="Điểm",
-            value=str(student.get("score", 0))
-        )
 
-        def save(e):
 
-            if name_input.value == "":
-                self.snack(
-                    "Tên học sinh không được để trống"
+        if score >= 8:
+
+            rank = "Giỏi"
+
+        elif score >= 6.5:
+
+            rank = "Khá"
+
+        elif score >= 5:
+
+            rank = "Trung bình"
+
+        else:
+
+            rank = "Yếu"
+
+
+
+        self.root.content = ft.Column(
+
+            [
+
+                ft.Text(
+                    "Thông tin học sinh",
+                    size=30
+                ),
+
+
+                ft.Text(
+                    f"Mã học sinh: {student.get('id')}"
+                ),
+
+
+                ft.Text(
+                    f"Họ tên: {student.get('name')}"
+                ),
+
+
+                ft.Text(
+                    f"Lớp: {student.get('class')}"
+                ),
+
+
+                ft.Text(
+                    f"Điểm: {score}"
+                ),
+
+
+                ft.Text(
+                    f"Xếp loại: {rank}"
+                ),
+
+
+
+                ft.ElevatedButton(
+
+                    "Đăng xuất",
+
+                    on_click=lambda e:
+                    self.logout()
+
                 )
-                return
+
+            ],
+
+
+            horizontal_alignment=
+            ft.CrossAxisAlignment.CENTER
+
+        )
+
+
+        self.page.update()
+
+
+
+
+    # ================= TRANG GIÁO VIÊN =================
+
+    def show_teacher_home(self):
+
+
+        self.root.content = ft.Column(
+
+            [
+
+                ft.Text(
+                    "Trang giáo viên",
+                    size=30
+                ),
+
+
+
+                ft.ElevatedButton(
+
+                    "Danh sách học sinh",
+
+                    on_click=lambda e:
+                    self.show_student_list()
+
+                ),
+
+
+
+                ft.ElevatedButton(
+
+                    "Thêm học sinh",
+
+                    on_click=lambda e:
+                    self.show_add_student()
+
+                ),
+
+
+
+                ft.ElevatedButton(
+
+                    "Quản lý học sinh",
+
+                    on_click=lambda e:
+                    self.show_manage_student()
+
+                ),
+
+
+
+                ft.ElevatedButton(
+
+                    "Nâng điểm học sinh",
+
+                    on_click=lambda e:
+                    self.show_update_score()
+
+                ),
+
+
+
+                ft.ElevatedButton(
+
+                    "Tìm kiếm học sinh",
+
+                    on_click=lambda e:
+                    self.show_search_student()
+
+                ),
+
+
+
+                ft.ElevatedButton(
+
+                    "Đăng xuất",
+
+                    on_click=lambda e:
+                    self.logout()
+
+                )
+
+            ],
+
+
+            horizontal_alignment=
+            ft.CrossAxisAlignment.CENTER
+
+        )
+
+
+        self.page.update()
+            # ================= DANH SÁCH HỌC SINH =================
+
+    def show_student_list(self):
+
+        data = []
+
+
+        for student in self.students:
+
+            if student.get("role") == "student":
+
+                data.append(
+
+                    ft.Text(
+
+                        f"{student.get('id')} - "
+                        f"{student.get('name')} - "
+                        f"Lớp {student.get('class')} - "
+                        f"Điểm {student.get('score')}"
+
+                    )
+
+                )
+
+
+
+        self.root.content = ft.Column(
+
+            [
+
+                ft.Text(
+                    "Danh sách học sinh",
+                    size=30
+                ),
+
+
+                *data,
+
+
+                ft.ElevatedButton(
+
+                    "Quay lại",
+
+                    on_click=lambda e:
+                    self.show_teacher_home()
+
+                )
+
+            ],
+
+            scroll=ft.ScrollMode.AUTO
+
+        )
+
+
+        self.page.update()
+
+
+
+
+    # ================= THÊM HỌC SINH =================
+
+    def show_add_student(self):
+
+
+        def add_student(e):
 
             try:
 
-                score = float(
-                    score_input.value
+                score = int(
+                    self.new_score.value
                 )
 
-                if score < 0 or score > 10:
-                    self.snack(
-                        "Điểm phải từ 0 đến 10"
-                    )
-                    return
+            except:
 
-                student["name"] = name_input.value
+                score = 0
+
+
+
+            new_student = {
+
+
+                "id":
+                self.new_id.value,
+
+
+                "name":
+                self.new_name.value,
+
+
+                "class":
+                "Chưa có",
+
+
+                "password":
+                "123456",
+
+
+                "score":
+                score,
+
+
+                "role":
+                "student"
+
+            }
+
+
+
+            self.students.append(
+                new_student
+            )
+
+
+            self.save_data()
+
+
+            self.show_message(
+                "Đã thêm học sinh"
+            )
+
+
+            self.show_student_list()
+
+
+
+        self.root.content = ft.Column(
+
+            [
+
+                ft.Text(
+                    "Thêm học sinh",
+                    size=30
+                ),
+
+
+                self.new_id,
+
+
+                self.new_name,
+
+
+                self.new_score,
+
+
+                ft.ElevatedButton(
+
+                    "Thêm",
+
+                    on_click=add_student
+
+                ),
+
+
+
+                ft.ElevatedButton(
+
+                    "Quay lại",
+
+                    on_click=lambda e:
+                    self.show_teacher_home()
+
+                )
+
+            ],
+
+
+            horizontal_alignment=
+            ft.CrossAxisAlignment.CENTER
+
+        )
+
+
+        self.page.update()
+            # ================= NÂNG ĐIỂM HỌC SINH =================
+
+    def show_update_score(self):
+
+
+        def update(e):
+
+            try:
+
+                score = int(
+                    self.edit_score.value
+                )
+
+            except:
+
+                self.show_message(
+                    "Điểm phải là số"
+                )
+
+                return
+
+
+
+            self.update_score(
+
+                self.edit_student_id.value,
+
+                score
+
+            )
+
+
+            self.show_message(
+                "Cập nhật điểm thành công"
+            )
+
+
+
+        self.root.content = ft.Column(
+
+            [
+
+                ft.Text(
+                    "Nâng điểm học sinh",
+                    size=30
+                ),
+
+
+                self.edit_student_id,
+
+
+                self.edit_score,
+
+
+                ft.ElevatedButton(
+
+                    "Cập nhật",
+
+                    on_click=update
+
+                ),
+
+
+
+                ft.ElevatedButton(
+
+                    "Quay lại",
+
+                    on_click=lambda e:
+                    self.show_teacher_home()
+
+                )
+
+            ],
+
+
+            horizontal_alignment=
+            ft.CrossAxisAlignment.CENTER
+
+        )
+
+
+        self.page.update()
+
+
+
+
+    # ================= CẬP NHẬT ĐIỂM =================
+
+    def update_score(self, student_id, score):
+
+
+        for student in self.students:
+
+
+            if (
+
+                student.get("id")
+                == student_id
+
+                and
+
+                student.get("role")
+                ==
+                "student"
+
+            ):
+
+
                 student["score"] = score
 
                 self.save_data()
 
-                self.snack(
-                    "Cập nhật thành công"
-                )
+                return
 
-                self.show_list(None)
 
-            except:
 
-                self.snack(
-                    "Điểm không hợp lệ"
-                )
-
-        self.root.content = ft.Column(
-            [
-
-                ft.Text(
-                    "SỬA HỌC SINH",
-                    size=24,
-                    weight="bold"
-                ),
-
-                ft.Text(
-                    f"ID: {student.get('id', 'N/A')}"
-                ),
-
-                name_input,
-
-                score_input,
-
-                ft.ElevatedButton(
-                    "Lưu",
-                    on_click=save
-                ),
-
-                ft.ElevatedButton(
-                    "Quay lại",
-                    on_click=lambda e: self.show_list(None)
-                )
-
-            ]
-
+        self.show_message(
+            "Không tìm thấy học sinh"
         )
 
-        self.page.update()
 
-    # ================= XÓA HỌC SINH =================
 
-    def delete_student(self, sid):
+
+    # ================= TÌM KIẾM =================
+
+    def search_student(self, keyword):
+
+
+        result = []
+
 
         for student in self.students:
 
-            if student.get("id") == sid:
+
+            if student.get("role") == "student":
+
+
+                name = student.get(
+                    "name",
+                    ""
+                ).lower()
+
+
+                sid = student.get(
+                    "id",
+                    ""
+                ).lower()
+
+
+
+                if (
+
+                    keyword.lower() in name
+
+                    or
+
+                    keyword.lower() in sid
+
+                ):
+
+                    result.append(student)
+
+
+
+        return result
+            # ================= GIAO DIỆN TÌM KIẾM =================
+
+    def show_search_student(self):
+
+
+        keyword = ft.TextField(
+            label="Nhập tên hoặc mã học sinh"
+        )
+
+
+        result_column = ft.Column()
+
+
+
+        def search(e):
+
+            result_column.controls.clear()
+
+
+            students = self.search_student(
+                keyword.value
+            )
+
+
+            for student in students:
+
+
+                result_column.controls.append(
+
+                    ft.Text(
+
+                        f"{student.get('id')} - "
+                        f"{student.get('name')} - "
+                        f"Điểm {student.get('score')}"
+
+                    )
+
+                )
+
+
+            self.page.update()
+
+
+
+        self.root.content = ft.Column(
+
+            [
+
+                ft.Text(
+                    "Tìm kiếm học sinh",
+                    size=30
+                ),
+
+
+                keyword,
+
+
+                ft.ElevatedButton(
+
+                    "Tìm",
+
+                    on_click=search
+
+                ),
+
+
+
+                result_column,
+
+
+
+                ft.ElevatedButton(
+
+                    "Quay lại",
+
+                    on_click=lambda e:
+                    self.show_teacher_home()
+
+                )
+
+            ],
+
+
+            horizontal_alignment=
+            ft.CrossAxisAlignment.CENTER
+
+        )
+
+
+        self.page.update()
+
+
+
+
+    # ================= QUẢN LÝ HỌC SINH =================
+
+    def show_manage_student(self):
+
+
+        students_view = []
+
+
+
+        for student in self.students:
+
+
+            if student.get("role") == "student":
+
+
+                students_view.append(
+
+                    ft.Row(
+
+                        [
+
+                            ft.Text(
+
+                                f"{student.get('id')} - "
+                                f"{student.get('name')} - "
+                                f"Điểm {student.get('score')}"
+
+                            ),
+
+
+
+                            ft.ElevatedButton(
+
+                                "Xóa",
+
+                                on_click=lambda e,
+                                sid=student.get("id"):
+                                self.delete_student(sid)
+
+                            )
+
+                        ]
+
+                    )
+
+                )
+
+
+
+        self.root.content = ft.Column(
+
+            [
+
+                ft.Text(
+                    "Quản lý học sinh",
+                    size=30
+                ),
+
+
+                *students_view,
+
+
+                ft.ElevatedButton(
+
+                    "Quay lại",
+
+                    on_click=lambda e:
+                    self.show_teacher_home()
+
+                )
+
+            ],
+
+
+            scroll=ft.ScrollMode.AUTO
+
+        )
+
+
+        self.page.update()
+            # ================= XÓA HỌC SINH =================
+
+    def delete_student(self, student_id):
+
+
+        for student in self.students:
+
+
+            if (
+
+                student.get("id")
+                ==
+                student_id
+
+                and
+
+                student.get("role")
+                ==
+                "student"
+
+            ):
+
+
                 self.students.remove(student)
+
                 break
+
+
 
         self.save_data()
 
-        self.snack(
-            "Đã xóa học sinh"
-        )
 
-        self.show_list(None)
+        self.show_manage_student()
 
-    # ================= ĐÁNH GIÁ HỌC SINH =================
 
-    def show_evaluate(self, e):
 
-        view = []
 
-        view.append(
+    # ================= KIỂM TRA TÀI KHOẢN =================
 
-            ft.Text(
-                "ĐÁNH GIÁ HỌC SINH",
-                size=24,
-                weight="bold"
-            )
+    def check_teacher_exist(self, name):
 
-        )
 
-        for student in self.students:
+        for teacher in self.students:
 
-            score = student.get("score", 0)
 
-            if score >= 8:
+            if (
 
-                status = "Giỏi"
+                teacher.get("role")
+                ==
+                "teacher"
 
-            elif score >= 6.5:
+                and
 
-                status = "Khá"
+                teacher.get("name")
+                ==
+                name
 
-            elif score >= 5:
+            ):
 
-                status = "Trung bình"
+                return True
 
-            else:
 
-                status = "Yếu"
 
-            view.append(
+        return False
 
-                ft.Text(
-                    f"{student.get('name', 'Ẩn danh')} - {score} → {status}"
-                )
 
-            )
 
-        view.append(
 
-            ft.ElevatedButton(
+    def check_student_exist(self, name):
 
-                "Quay lại",
-
-                on_click=lambda e: self.show_home()
-
-            )
-
-        )
-
-        self.root.content = ft.Column(
-            view
-        )
-
-        self.page.update()
-
-    # ================= THỐNG KÊ =================
-
-    def show_statistics(self, e):
-
-        total = len(
-            self.students
-        )
-
-        if total == 0:
-
-            self.root.content = ft.Column(
-                [
-                    ft.Text(
-                        "Không có dữ liệu",
-                        size=20
-                    ),
-                    ft.ElevatedButton(
-                        "Quay lại",
-                        on_click=lambda e: self.show_home()
-                    )
-                ]
-            )
-
-            self.page.update()
-            return
-
-        gioi = 0
-        kha = 0
-        trungbinh = 0
-        yeu = 0
 
         for student in self.students:
 
-            score = student.get("score", 0)
 
-            if score >= 8:
+            if (
 
-                gioi += 1
+                student.get("role")
+                ==
+                "student"
 
-            elif score >= 6.5:
+                and
 
-                kha += 1
+                student.get("name")
+                ==
+                name
 
-            elif score >= 5:
+            ):
 
-                trungbinh += 1
+                return True
 
-            else:
 
-                yeu += 1
 
-        self.root.content = ft.Column(
+        return False
 
-            [
 
-                ft.Text(
-                    "THỐNG KÊ",
-                    size=24,
-                    weight="bold"
-                ),
 
-                ft.Text(
-                    f"Tổng học sinh: {total}"
-                ),
-
-                ft.Text(
-                    f"Điểm trung bình: {self.avg_score()}"
-                ),
-
-                ft.Text(
-                    f"Giỏi: {gioi}"
-                ),
-
-                ft.Text(
-                    f"Khá: {kha}"
-                ),
-
-                ft.Text(
-                    f"Trung bình: {trungbinh}"
-                ),
-
-                ft.Text(
-                    f"Yếu: {yeu}"
-                ),
-
-                ft.ElevatedButton(
-                    "Quay lại",
-                    on_click=lambda e: self.show_home()
-                )
-
-            ]
-
-        )
-
-        self.page.update()
-
-    # ================= TÍNH ĐIỂM TRUNG BÌNH =================
-
-    def avg_score(self):
-
-        if len(self.students) == 0:
-            return 0
-
-        total = 0
-
-        for student in self.students:
-            total += student.get("score", 0)
-
-        return round(
-            total / len(self.students),
-            2
-        )
 
     # ================= THÔNG BÁO =================
 
-    def snack(self, msg):
+    def show_message(self, message):
+
 
         self.page.snack_bar = ft.SnackBar(
 
-            ft.Text(msg)
+            ft.Text(message)
 
         )
 
+
         self.page.snack_bar.open = True
 
+
         self.page.update()
+
+
+
+
+    # ================= ĐĂNG XUẤT =================
+
+    def logout(self):
+
+
+        self.current_user = None
+
+
+        self.show_role_select()
+            # ================= LẤY DANH SÁCH =================
+
+    def get_students(self):
+
+        result = []
+
+
+        for student in self.students:
+
+            if student.get("role") == "student":
+
+                result.append(student)
+
+
+        return result
+
+
+
+
+    def get_teachers(self):
+
+        result = []
+
+
+        for teacher in self.students:
+
+            if teacher.get("role") == "teacher":
+
+                result.append(teacher)
+
+
+        return result
+
+
+
+
+    # ================= TẠO ID TỰ ĐỘNG =================
+
+    def create_student_id(self):
+
+        number = 1
+
+
+        while True:
+
+
+            new_id = "HS" + str(number).zfill(2)
+
+
+            exists = False
+
+
+
+            for student in self.students:
+
+
+                if student.get("id") == new_id:
+
+                    exists = True
+
+                    break
+
+
+
+            if exists == False:
+
+                return new_id
+
+
+
+            number += 1
+
+
+
+
+    def create_teacher_id(self):
+
+        number = 1
+
+
+        while True:
+
+
+            new_id = "GV" + str(number).zfill(2)
+
+
+            exists = False
+
+
+
+            for teacher in self.students:
+
+
+                if teacher.get("id") == new_id:
+
+                    exists = True
+
+                    break
+
+
+
+            if exists == False:
+
+                return new_id
+
+
+
+            number += 1
+
+
+
+
+    # ================= RESET Ô NHẬP =================
+
+    def clear_teacher_login(self):
+
+        self.teacher_name_login.value = ""
+
+        self.teacher_password_login.value = ""
+
+        self.teacher_key_login.value = ""
+
+        self.page.update()
+
+
+
+
+    def clear_student_login(self):
+
+        self.student_login_name.value = ""
+
+        self.student_login_password.value = ""
+
+        self.page.update()
+
+
+
+
+    # ================= KIỂM TRA DỮ LIỆU =================
+
+    def validate_empty(self, values):
+
+
+        for value in values:
+
+
+            if value is None or value == "":
+
+                return False
+
+
+
+        return True
+
+
+
+
+    # ================= KHỞI ĐỘNG =================
+
+    def start(self):
+
+
+        self.load_data()
+
+
+        self.show_role_select()

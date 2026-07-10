@@ -13,7 +13,7 @@ class AppController:
         self.db_url = "https://brothers1goal-default-rtdb.firebaseio.com/students.json"
 
         self.file = "students.json"
-        self.students = self.load_data()
+        self.students = []
 
         # ================= ĐĂNG NHẬP =================
 
@@ -71,42 +71,47 @@ class AppController:
             can_reveal_password=True
         )
 
-    # ================= LOAD DATA (Sửa lề thành công) =================
+    # ================= LOAD DATA =================
 
     def load_data(self):
-        # 1. DÀNH CHO ĐIỆN THOẠI / WEB: Thử tải dữ liệu bằng công cụ của Trình duyệt Web
+
+        # 1. DÀNH CHO ĐIỆN THOẠI / WEB (Chạy trên trình duyệt)
         try:
             import js
             xhr = js.XMLHttpRequest.new()
-            xhr.open("GET", self.db_url, False)
+            xhr.open("GET", self.db_url, False)  # Đồng bộ hoàn toàn theo code cũ của bạn
             xhr.send()
-            if xhr.status == 200 and xhr.responseText:
+
+            if xhr.status == 200:
                 cloud_data = json.loads(xhr.responseText)
                 if cloud_data is not None:
-                    return cloud_data
+                    self.students = cloud_data
+                    return
         except:
             pass
 
-        # 2. DÀNH CHO PYCHARM: Thử tải dữ liệu từ Cloud bằng thư viện Python máy tính
+        # 2. DÀNH CHO PYCHARM (Chạy trên máy tính)
         try:
             import urllib.request
             req = urllib.request.Request(self.db_url, method="GET")
             with urllib.request.urlopen(req, timeout=5) as response:
                 cloud_data = json.loads(response.read().decode("utf-8"))
                 if cloud_data is not None:
-                    return cloud_data
+                    self.students = cloud_data
+                    return
         except:
             pass
 
-        # 3. DỰ PHÒNG OFFLINE: Đọc từ file JSON cục bộ trên máy tính nếu mất mạng
+        # 3. DỰ PHÒNG OFFLINE (Nếu cả 2 cách trên thất bại)
         try:
             if os.path.exists(self.file):
                 with open(self.file, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    self.students = json.load(f)
+                    return
         except:
             pass
 
-        return [
+        self.students = [
             {
                 "id": "HS01",
                 "name": "Nguyễn Văn A",
@@ -123,10 +128,11 @@ class AppController:
             }
         ]
 
-    # ================= SAVE DATA (Sửa lề thành công) =================
+    # ================= SAVE DATA =================
 
     def save_data(self):
-        # 1. DÀNH CHO ĐIỆN THOẠI / WEB: Gửi thẳng dữ liệu lên Firebase thông qua trình duyệt
+
+        # 1. DÀNH CHO ĐIỆN THOẠI / WEB
         try:
             import js
             xhr = js.XMLHttpRequest.new()
@@ -138,7 +144,7 @@ class AppController:
         except:
             pass
 
-        # 2. DÀNH CHO PYCHARM: Gửi dữ liệu lên Firebase bằng thư viện Python máy tính
+        # 2. DÀNH CHO PYCHARM
         try:
             import urllib.request
             req = urllib.request.Request(
@@ -152,7 +158,7 @@ class AppController:
         except:
             pass
 
-        # 3. DỰ PHÒNG BACKUP: Luôn lưu một bản vào file JSON trong PyCharm để kiểm tra mẫu
+        # 3. DỰ PHÒNG BACKUP LOCAL
         try:
             with open(self.file, "w", encoding="utf-8") as f:
                 json.dump(self.students, f, ensure_ascii=False, indent=2)
@@ -233,9 +239,10 @@ class AppController:
 
         for student in self.students:
 
+            # 🛠️ ĐÃ SỬA: Dùng .get() để tránh crash nếu dữ liệu thiếu trường 'id' hoặc 'password'
             if (
-                student["id"] == self.student_id.value
-                and student["password"] == self.password.value
+                student.get("id") == self.student_id.value
+                and student.get("password") == self.password.value
             ):
                 found = True
                 break
@@ -329,7 +336,7 @@ class AppController:
             return
 
         for student in self.students:
-            if student["id"] == self.register_id.value:
+            if student.get("id") == self.register_id.value:
                 self.snack(
                     "Mã học sinh đã tồn tại"
                 )
@@ -418,27 +425,30 @@ class AppController:
 
         for student in self.students:
 
+            # 🛠️ ĐÃ SỬA: Dùng .get() để tránh lỗi hiển thị nếu học sinh thiếu trường dữ liệu
+            sid = student.get("id", "N/A")
+            sname = student.get("name", "Ẩn danh")
+            sscore = student.get("score", 0)
+
             controls.append(
 
                 ft.Row(
                     [
 
                         ft.Text(
-                            f"ID: {student['id']} | "
-                            f"Tên: {student['name']} | "
-                            f"Điểm: {student['score']}"
+                            f"ID: {sid} | "
+                            f"Tên: {sname} | "
+                            f"Điểm: {sscore}"
                         ),
 
                         ft.ElevatedButton(
                             "Sửa",
-                            on_click=lambda e, sid=student["id"]:
-                            self.edit_student(sid)
+                            on_click=lambda e, sid=sid: self.edit_student(sid)
                         ),
 
                         ft.ElevatedButton(
                             "Xóa",
-                            on_click=lambda e, sid=student["id"]:
-                            self.delete_student(sid)
+                            on_click=lambda e, sid=sid: self.delete_student(sid)
                         )
 
                     ],
@@ -537,7 +547,7 @@ class AppController:
 
         for student in self.students:
 
-            if student["id"] == self.new_id.value:
+            if student.get("id") == self.new_id.value:
                 self.snack(
                     "ID học sinh đã tồn tại"
                 )
@@ -595,7 +605,7 @@ class AppController:
 
         for s in self.students:
 
-            if s["id"] == sid:
+            if s.get("id") == sid:
                 student = s
                 break
 
@@ -607,12 +617,12 @@ class AppController:
 
         name_input = ft.TextField(
             label="Tên học sinh",
-            value=student["name"]
+            value=student.get("name", "")
         )
 
         score_input = ft.TextField(
             label="Điểm",
-            value=str(student["score"])
+            value=str(student.get("score", 0))
         )
 
         def save(e):
@@ -662,7 +672,7 @@ class AppController:
                 ),
 
                 ft.Text(
-                    f"ID: {student['id']}"
+                    f"ID: {student.get('id', 'N/A')}"
                 ),
 
                 name_input,
@@ -691,7 +701,7 @@ class AppController:
 
         for student in self.students:
 
-            if student["id"] == sid:
+            if student.get("id") == sid:
                 self.students.remove(student)
                 break
 
@@ -721,7 +731,7 @@ class AppController:
 
         for student in self.students:
 
-            score = student["score"]
+            score = student.get("score", 0)
 
             if score >= 8:
 
@@ -742,7 +752,7 @@ class AppController:
             view.append(
 
                 ft.Text(
-                    f"{student['name']} - {score} → {status}"
+                    f"{student.get('name', 'Ẩn danh')} - {score} → {status}"
                 )
 
             )
@@ -798,7 +808,7 @@ class AppController:
 
         for student in self.students:
 
-            score = student["score"]
+            score = student.get("score", 0)
 
             if score >= 8:
 
@@ -871,7 +881,7 @@ class AppController:
         total = 0
 
         for student in self.students:
-            total += student["score"]
+            total += student.get("score", 0)
 
         return round(
             total / len(self.students),

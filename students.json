@@ -7,18 +7,27 @@
   {
     "id": "002",
     "name": "Đinh Đức Tiến",
-    "score": 6.7
+    "score": 10.0
   },
   {
-    "id": "003",
-    "name": "Ngô Long Vỹ ",
-    "score": 7.6
+    "class": "11",
+    "id": "005",
+    "name": "Đinh Đức Tiến",
+    "password": "toansung5533",
+    "score": 10.0
   },
   {
     "class": "11A1",
     "id": "009",
     "name": "DINO",
     "password": "0925524289",
-    "score": 6.7
+    "score": 10.0
+  },
+  {
+    "id": "006",
+    "name": "Đinh Văn Nghĩa",
+    "class": "",
+    "password": "123456",
+    "score": 7.8
   }
 ]

@@ -618,7 +618,7 @@ class AppController:
 
 
         self.page.update()
-            # ================= ĐĂNG NHẬP HỌC SINH =================
+            # ================= HỌC SINH ĐĂNG NHẬP =================
 
     def show_student_login(self):
 

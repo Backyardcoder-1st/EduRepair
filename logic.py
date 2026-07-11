@@ -158,7 +158,7 @@ class AppController:
             label="Điểm mới"
 
         )
-            # ================= LOAD DATA =================
+            # ================= LOAD DATA (ĐÃ SỬA LỖI ĐỒNG BỘ) =================
 
     def load_data(self):
 
@@ -190,8 +190,11 @@ class AppController:
 
 
                 if data:
-
-                    self.students = data
+                    # FIX BUG: Nếu Firebase trả về dạng dict, chuyển thành list sạch để tránh sập app
+                    if isinstance(data, dict):
+                        self.students = list(data.values())
+                    else:
+                        self.students = data
 
                     return
 
@@ -222,7 +225,11 @@ class AppController:
                 ) as f:
 
 
-                    self.students = json.load(f)
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        self.students = list(data.values())
+                    else:
+                        self.students = data
 
                     return
 
@@ -279,7 +286,7 @@ class AppController:
 
 
 
-    # ================= SAVE DATA =================
+    # ================= SAVE DATA (ĐÃ TỐI ƯU GỬI DỮ LIỆU CHUẨN) =================
 
 
     def save_data(self):

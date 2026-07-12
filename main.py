@@ -18,44 +18,24 @@ def main(page: ft.Page):
 
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
 
-
-
-    # Màu nền
-
-    page.bgcolor = "#F5F7FA"
-
-
+    # Màu nền web đổi thành màu tối (Xám đen)
+    page.bgcolor = "#1A1A1A"
 
     app = AppController(page)
 
-
-
     app.start()
 
-
-
-    # Khung giao diện chính
-
+    # Khung giao diện chính đổi thành nền đen để hiện chữ trắng
     container = ft.Container(
-
         content=app.root,
-
         width=500,
-
         padding=30,
-
         border_radius=15,
-
-        bgcolor="white",
-
+        bgcolor="#2D2D2D",  # Đổi từ "white" thành màu tối
         shadow=ft.BoxShadow(
-
             blur_radius=15,
-
             spread_radius=2
-
         )
-
     )
 
 

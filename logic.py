@@ -27,31 +27,27 @@ class AppController:
         self.current_user = None
         self.admin_key = "123"
 
-        # Tích hợp bộ chọn ảnh minh chứng Base64
-        self.file_picker = ft.FilePicker(on_result=self.on_file_picked)
-        self.page.overlay.append(self.file_picker)
+        # Tích hợp bộ chọn ảnh minh chứng bằng cách gắn trực tiếp vào overlay nền ẩn
+        file_picker = ft.FilePicker()
+        file_picker.on_result = self.on_file_picked
+
+        # Đưa trực tiếp vào overlay mà không giữ biến self nào để tránh lỗi render hộp đỏ
+        if not any(isinstance(x, ft.FilePicker) for x in self.page.overlay):
+            self.page.overlay.append(file_picker)
+
         self.current_image_base64 = ""
 
-        # ================= KHAI BÁO CÁC Ô NHẬP LIỆU (SỬA LỖI CRASH) =================
-        # Đăng nhập admin
+        # ================= KHAI BÁO CÁC Ô NHẬP LIỆU =================
         self.admin_key_login = ft.TextField(label="Mã Giám Thị / Admin", password=True, can_reveal_password=True)
-
-        # Đăng nhập học sinh
         self.student_login_name = ft.TextField(label="Tên đăng nhập (Họ tên)")
         self.student_login_password = ft.TextField(label="Mật khẩu", password=True, can_reveal_password=True)
-
-        # Đăng ký học sinh
         self.student_name = ft.TextField(label="Họ và tên học sinh")
         self.student_class = ft.TextField(label="Lớp học")
         self.student_password = ft.TextField(label="Mật khẩu tài khoản", password=True)
         self.student_confirm = ft.TextField(label="Xác nhận mật khẩu", password=True)
-
-        # Admin thêm học sinh mới
         self.new_id = ft.TextField(label="Mã số (Để trống để tự tạo)")
         self.new_name = ft.TextField(label="Họ tên học sinh mới")
         self.new_score = ft.TextField(label="Điểm số ban đầu")
-
-        # Admin sửa điểm
         self.edit_student_id = ft.TextField(label="Mã học sinh cần nâng điểm")
         self.edit_score = ft.TextField(label="Điểm mới")
 
@@ -134,7 +130,7 @@ class AppController:
         except Exception as e:
             print(f"Lỗi ghi file local: {e}")
 
-    # ================= CÁC CHỨC NĂNG GIAO DIỆN (GIỮ NGUYÊN TỪNG HÀM BIỆT LẬP) =================
+    # ================= CÁC CHỨC NĂNG GIAO DIỆN =================
     def show_role_select(self):
         self.root.content = ft.Column(
             [
@@ -273,11 +269,20 @@ class AppController:
                 ft.Image(src_base64=student.get("image_proof"), width=150, height=150, fit=ft.ImageFit.CONTAIN)
             )
 
+        # Hàm kích hoạt FilePicker ẩn tìm thấy từ overlay nền của page
+        def trigger_picker(e):
+            for control in self.page.overlay:
+                if isinstance(control, ft.FilePicker):
+                    control.pick_files(
+                        allow_multiple=False,
+                        file_type=ft.FilePickerFileType.IMAGE
+                    )
+                    break
+
         student_controls.append(
             ft.ElevatedButton(
                 "Tải ảnh minh chứng lao động",
-                on_click=lambda _: self.file_picker.pick_files(allow_multiple=False,
-                                                               file_type=ft.FilePickerFileType.IMAGE)
+                on_click=trigger_picker
             )
         )
 

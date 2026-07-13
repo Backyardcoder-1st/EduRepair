@@ -20,9 +20,15 @@ class AppController:
 
         self.page = page
 
-        self.root = ft.Container()
+
+        # FIX TRẮNG MÀN HÌNH FLET WEB
+        self.root = ft.Container(
+            expand=True
+        )
+
 
         self.file = "students.json"
+
 
 
         self.db_url = base64.b64decode(
@@ -30,18 +36,21 @@ class AppController:
         ).decode()
 
 
+
         self.students = []
 
         self.current_user = None
 
 
-        # Key đăng nhập Admin
+
+        # KEY ADMIN
+
         self.admin_key = "123"
 
 
 
         # =========================
-        # FORM ĐĂNG NHẬP ADMIN
+        # ĐĂNG NHẬP ADMIN
         # =========================
 
         self.admin_key_login = ft.TextField(
@@ -53,7 +62,7 @@ class AppController:
 
 
         # =========================
-        # FORM ĐĂNG NHẬP HỌC SINH
+        # ĐĂNG NHẬP HỌC SINH
         # =========================
 
         self.student_login_name = ft.TextField(
@@ -70,7 +79,7 @@ class AppController:
 
 
         # =========================
-        # FORM ĐĂNG KÝ HỌC SINH
+        # ĐĂNG KÝ HỌC SINH
         # =========================
 
         self.student_name = ft.TextField(
@@ -97,11 +106,11 @@ class AppController:
 
 
         # =========================
-        # FORM THÊM HỌC SINH
+        # THÊM HỌC SINH
         # =========================
 
         self.new_id = ft.TextField(
-            label="Mã học sinh (để trống sẽ tự tạo)"
+            label="Mã học sinh (để trống tự tạo)"
         )
 
 
@@ -117,7 +126,7 @@ class AppController:
 
 
         # =========================
-        # FORM SỬA ĐIỂM
+        # SỬA ĐIỂM
         # =========================
 
         self.edit_student_id = ft.TextField(
@@ -128,35 +137,57 @@ class AppController:
         self.edit_score = ft.TextField(
             label="Điểm mới"
         )
-
-
-
-    # =========================
-    # HÀM KHỞI ĐỘNG
+            # =========================
+    # KHỞI ĐỘNG ỨNG DỤNG
     # =========================
 
     def start(self):
 
-        self.file_picker = None
+        print("APP START")
+
 
         self.load_data()
 
+        print("LOAD XONG")
+
+
         self.check_data()
 
+        print("CHECK XONG")
+
+
         self.show_role_select()
-            # =========================
-    # THÔNG BÁO
+
+        print("HIEN LOGIN XONG")
+
+
+
+
+
+    # =========================
+    # HIỂN THỊ THÔNG BÁO
     # =========================
 
     def show_message(self, message):
 
-        self.page.snack_bar = ft.SnackBar(
-            content=ft.Text(message)
-        )
+        try:
 
-        self.page.snack_bar.open = True
+            self.page.snack_bar = ft.SnackBar(
+                content=ft.Text(message)
+            )
 
-        self.page.update()
+
+            self.page.snack_bar.open = True
+
+
+            self.page.update()
+
+
+        except Exception as e:
+
+            print("Snack error:", e)
+
+
 
 
 
@@ -169,24 +200,24 @@ class AppController:
         self.students = []
 
 
-        # -------------------------
-        # Lấy dữ liệu Firebase
-        # -------------------------
+
+        # LOAD FIREBASE
 
         try:
+
 
             req = urllib.request.Request(
 
                 self.db_url,
 
                 headers={
-                    "User-Agent": "Mozilla/5.0",
                     "Content-Type": "application/json"
                 },
 
                 method="GET"
 
             )
+
 
 
             with urllib.request.urlopen(
@@ -201,6 +232,7 @@ class AppController:
                 )
 
 
+
                 if isinstance(data, dict):
 
                     self.students = list(
@@ -211,8 +243,9 @@ class AppController:
                 elif isinstance(data, list):
 
                     self.students = [
-                        i for i in data if i
+                        x for x in data if x
                     ]
+
 
 
         except Exception as e:
@@ -221,9 +254,9 @@ class AppController:
 
 
 
-        # -------------------------
-        # Nếu Firebase lỗi lấy file local
-        # -------------------------
+
+        # NẾU FIREBASE LỖI -> FILE LOCAL
+
 
         if len(self.students) == 0:
 
@@ -244,36 +277,32 @@ class AppController:
                         data = json.load(f)
 
 
-                        if isinstance(data, dict):
+
+                        if isinstance(data, list):
+
+                            self.students = data
+
+
+                        elif isinstance(data, dict):
 
                             self.students = list(
                                 data.values()
                             )
 
 
-                        elif isinstance(data, list):
-
-                            self.students = [
-                                i for i in data if i
-                            ]
-
-
 
             except Exception as e:
 
                 print("Local load:", e)
-
-
-
-
-        # -------------------------
-        # Dữ liệu mẫu ban đầu
-        # -------------------------
+                        # =========================
+        # DỮ LIỆU MẪU NẾU TRỐNG
+        # =========================
 
         if len(self.students) == 0:
 
 
             self.students = [
+
 
                 {
                     "id": "HS01",
@@ -296,7 +325,10 @@ class AppController:
                     "image_proof": ""
                 }
 
+
             ]
+
+
 
 
 
@@ -306,7 +338,9 @@ class AppController:
 
     def save_data(self):
 
+
         data = {}
+
 
 
         for student in self.students:
@@ -318,9 +352,9 @@ class AppController:
 
 
 
-        # -------------------------
-        # Lưu Firebase
-        # -------------------------
+
+
+        # LƯU FIREBASE
 
         try:
 
@@ -345,6 +379,7 @@ class AppController:
             )
 
 
+
             urllib.request.urlopen(
 
                 req,
@@ -356,6 +391,7 @@ class AppController:
             )
 
 
+
         except Exception as e:
 
             print("Firebase save:", e)
@@ -363,9 +399,11 @@ class AppController:
 
 
 
-        # -------------------------
-        # Sao lưu file local
-        # -------------------------
+
+
+
+        # SAO LƯU LOCAL
+
 
         try:
 
@@ -381,6 +419,7 @@ class AppController:
             ) as f:
 
 
+
                 json.dump(
 
                     self.students,
@@ -394,29 +433,38 @@ class AppController:
                 )
 
 
+
         except Exception as e:
 
+
             print("Local save:", e)
-                # =========================
+
+
+
+
+
+
+    # =========================
     # KIỂM TRA ĐIỂM
     # =========================
 
     def check_score(self, score):
 
+
         try:
 
             score = float(score)
 
+
         except:
+
 
             return False
 
 
+
         return 0 <= score <= 10
-
-
-
-    # =========================
+            # =========================
     # KIỂM TRA ĐĂNG KÝ HỌC SINH
     # =========================
 
@@ -441,13 +489,10 @@ class AppController:
 
 
 
-        if (
-            self.student_password.value
-            !=
-            self.student_confirm.value
-        ):
+        if self.student_password.value != self.student_confirm.value:
 
             return False, "Mật khẩu xác nhận không khớp"
+
 
 
 
@@ -479,26 +524,16 @@ class AppController:
 
 
 
+
         return True, ""
 
 
 
 
-    # =========================
-    # XÓA FORM ĐĂNG NHẬP
-    # =========================
-
-    def clear_student_login(self):
-
-        self.student_login_name.value = ""
-
-        self.student_login_password.value = ""
-
-
 
 
     # =========================
-    # XÓA TOÀN BỘ FORM
+    # XÓA FORM
     # =========================
 
     def clear_all_form(self):
@@ -510,6 +545,7 @@ class AppController:
         self.student_login_name.value = ""
 
         self.student_login_password.value = ""
+
 
 
         self.student_name.value = ""
@@ -547,6 +583,8 @@ class AppController:
 
 
 
+
+
     # =========================
     # TẠO MÃ HỌC SINH
     # =========================
@@ -563,7 +601,8 @@ class AppController:
 
             student_id = f"HS{number:02d}"
 
-            found = False
+
+            check = False
 
 
 
@@ -573,14 +612,15 @@ class AppController:
                 if student.get("id") == student_id:
 
 
-                    found = True
+                    check = True
 
                     break
 
 
 
 
-            if not found:
+
+            if check == False:
 
 
                 return student_id
@@ -589,11 +629,7 @@ class AppController:
 
 
             number += 1
-
-
-
-
-    # =========================
+                # =========================
     # LẤY DANH SÁCH HỌC SINH
     # =========================
 
@@ -614,7 +650,10 @@ class AppController:
 
 
 
+
         return result
+
+
 
 
 
@@ -633,16 +672,28 @@ class AppController:
 
 
         self.show_role_select()
-            # =========================
+
+
+
+
+
+
+    # =========================
     # CHỌN VAI TRÒ
     # =========================
 
     def show_role_select(self):
 
 
+        print("HIEN ROLE SELECT")
+
+
+
         self.root.content = ft.Column(
 
+
             controls=[
+
 
 
                 ft.Text(
@@ -654,6 +705,7 @@ class AppController:
                     weight=ft.FontWeight.BOLD
 
                 ),
+
 
 
 
@@ -670,6 +722,8 @@ class AppController:
 
 
 
+
+
                 ft.ElevatedButton(
 
                     "Học sinh",
@@ -682,23 +736,31 @@ class AppController:
                 )
 
 
+
             ],
 
 
+
             alignment=ft.MainAxisAlignment.CENTER,
+
 
 
             horizontal_alignment=
             ft.CrossAxisAlignment.CENTER,
 
 
+
             spacing=15
+
+
 
         )
 
 
 
         self.page.update()
+
+
 
 
 
@@ -718,22 +780,14 @@ class AppController:
         def login(e):
 
 
-            if (
+            if self.admin_key_login.value.strip() == self.admin_key:
 
-                self.admin_key_login.value.strip()
-
-                ==
-
-                self.admin_key
-
-            ):
 
 
                 self.current_user = {
 
 
                     "name": "Admin",
-
 
                     "role": "admin"
 
@@ -807,15 +861,17 @@ class AppController:
 
 
 
-            alignment=
-            ft.MainAxisAlignment.CENTER,
+            alignment=ft.MainAxisAlignment.CENTER,
+
 
 
             horizontal_alignment=
             ft.CrossAxisAlignment.CENTER,
 
 
+
             spacing=15
+
 
 
         )
@@ -823,12 +879,7 @@ class AppController:
 
 
         self.page.update()
-
-
-
-
-
-    # =========================
+            # =========================
     # TRANG ADMIN
     # =========================
 
@@ -883,6 +934,7 @@ class AppController:
 
 
 
+
                 ft.ElevatedButton(
 
                     "Quản lý / Xóa học sinh",
@@ -893,6 +945,7 @@ class AppController:
                     self.show_manage_student()
 
                 ),
+
 
 
 
@@ -911,6 +964,7 @@ class AppController:
 
 
 
+
                 ft.ElevatedButton(
 
                     "Tìm kiếm học sinh",
@@ -925,7 +979,9 @@ class AppController:
 
 
 
+
                 ft.Divider(),
+
 
 
 
@@ -947,15 +1003,17 @@ class AppController:
 
 
 
-            alignment=
-            ft.MainAxisAlignment.CENTER,
+            alignment=ft.MainAxisAlignment.CENTER,
+
 
 
             horizontal_alignment=
             ft.CrossAxisAlignment.CENTER,
 
 
+
             spacing=12
+
 
 
         )
@@ -963,15 +1021,17 @@ class AppController:
 
 
         self.page.update()
-            # =========================
+
+
+
+
+
+
+    # =========================
     # ĐĂNG NHẬP HỌC SINH
     # =========================
 
     def show_student_login(self):
-
-
-        self.clear_student_login()
-
 
 
         def login(e):
@@ -992,6 +1052,7 @@ class AppController:
                 )
 
                 return
+
 
 
 
@@ -1027,11 +1088,10 @@ class AppController:
 
 
 
+
             self.show_message(
-                "Sai tên đăng nhập hoặc mật khẩu!"
+                "Sai tên hoặc mật khẩu!"
             )
-
-
 
 
 
@@ -1081,7 +1141,6 @@ class AppController:
 
 
 
-
                 ft.ElevatedButton(
 
                     "Đăng ký tài khoản",
@@ -1092,7 +1151,6 @@ class AppController:
                     self.show_register_student()
 
                 ),
-
 
 
 
@@ -1112,15 +1170,17 @@ class AppController:
 
 
 
-            alignment=
-            ft.MainAxisAlignment.CENTER,
+            alignment=ft.MainAxisAlignment.CENTER,
+
 
 
             horizontal_alignment=
             ft.CrossAxisAlignment.CENTER,
 
 
+
             spacing=15
+
 
 
         )
@@ -1128,27 +1188,17 @@ class AppController:
 
 
         self.page.update()
-
-
-
-
-
-
-
-    # =========================
+            # =========================
     # ĐĂNG KÝ HỌC SINH
     # =========================
 
     def show_register_student(self):
 
 
-
         def register(e):
 
 
-            ok, message = (
-                self.validate_student_register()
-            )
+            ok, message = self.validate_student_register()
 
 
 
@@ -1156,7 +1206,6 @@ class AppController:
 
 
                 self.show_message(message)
-
 
                 return
 
@@ -1167,46 +1216,30 @@ class AppController:
             student = {
 
 
-                "id":
-                self.create_student_id(),
-
+                "id": self.create_student_id(),
 
 
                 "name":
                 self.student_name.value.strip(),
 
 
-
-
                 "class":
                 self.student_class.value.strip(),
-
-
 
 
                 "password":
                 self.student_password.value,
 
 
+                "score": 0,
 
 
-                "score":
-                0,
+                "role": "student",
 
 
-
-
-                "role":
-                "student",
-
-
-
-
-                "image_proof":
-                ""
+                "image_proof": ""
 
             }
-
 
 
 
@@ -1239,8 +1272,8 @@ class AppController:
         self.root.content = ft.Column(
 
 
-            controls=[
 
+            controls=[
 
 
 
@@ -1306,15 +1339,17 @@ class AppController:
 
 
 
-            alignment=
-            ft.MainAxisAlignment.CENTER,
+            alignment=ft.MainAxisAlignment.CENTER,
+
 
 
             horizontal_alignment=
             ft.CrossAxisAlignment.CENTER,
 
 
+
             spacing=12
+
 
 
         )
@@ -1322,8 +1357,14 @@ class AppController:
 
 
         self.page.update()
-            # =========================
-    # TRANG CHỦ HỌC SINH
+
+
+
+
+
+
+    # =========================
+    # TRANG HỌC SINH
     # =========================
 
     def show_student_home(self):
@@ -1335,6 +1376,7 @@ class AppController:
             self.show_role_select()
 
             return
+
 
 
 
@@ -1355,19 +1397,16 @@ class AppController:
             rank = "Giỏi"
 
 
-
         elif score >= 6.5:
 
 
             rank = "Khá"
 
 
-
         elif score >= 5:
 
 
             rank = "Trung bình"
-
 
 
         else:
@@ -1379,186 +1418,80 @@ class AppController:
 
 
 
-        controls = [
+        self.root.content = ft.Column(
 
 
+            controls=[
 
 
-            ft.Text(
 
-                "THÔNG TIN HỌC SINH",
+                ft.Text(
 
-                size=30,
+                    "THÔNG TIN HỌC SINH",
 
-                weight=ft.FontWeight.BOLD
+                    size=30,
 
-            ),
+                    weight=ft.FontWeight.BOLD
 
+                ),
 
 
 
-            ft.Divider(),
 
+                ft.Text(
+                    f"Mã: {student.get('id')}"
+                ),
 
 
 
-            ft.Text(
 
-                f"Mã học sinh: {student.get('id')}",
+                ft.Text(
+                    f"Họ tên: {student.get('name')}"
+                ),
 
-                size=16
 
-            ),
 
 
+                ft.Text(
+                    f"Lớp: {student.get('class')}"
+                ),
 
 
 
-            ft.Text(
 
-                f"Họ tên: {student.get('name')}",
+                ft.Text(
+                    f"Điểm: {student.get('score')}"
+                ),
 
-                size=16
 
-            ),
 
 
+                ft.Text(
 
+                    f"Xếp loại: {rank}",
 
+                    weight=ft.FontWeight.BOLD
 
-            ft.Text(
+                ),
 
-                f"Lớp: {student.get('class')}",
 
-                size=16
 
-            ),
 
 
+                ft.ElevatedButton(
 
+                    "Đăng xuất",
 
+                    width=180,
 
-            ft.Text(
-
-                f"Điểm: {student.get('score')}",
-
-                size=16
-
-            ),
-
-
-
-
-
-            ft.Text(
-
-                f"Xếp loại: {rank}",
-
-                size=18,
-
-                weight=ft.FontWeight.BOLD
-
-            ),
-
-
-
-
-
-            ft.Divider()
-
-
-        ]
-
-
-
-
-
-        # Hiện ảnh minh chứng nếu có
-
-        if student.get("image_proof"):
-
-
-            try:
-
-
-                controls.append(
-
-
-                    ft.Image(
-
-                        src_base64=
-                        student["image_proof"],
-
-                        width=180,
-
-                        height=180,
-
-                        fit=ft.ImageFit.CONTAIN
-
-                    )
+                    on_click=lambda e:
+                    self.logout()
 
                 )
 
 
 
-            except:
-
-
-                pass
-
-
-
-
-
-        controls.append(
-
-
-
-            ft.Text(
-
-                "Phiên bản Web chưa hỗ trợ tải ảnh minh chứng.",
-
-                size=14
-
-            )
-
-
-
-        )
-
-
-
-
-
-        controls.append(
-
-
-
-            ft.ElevatedButton(
-
-                "Đăng xuất",
-
-                width=180,
-
-                on_click=lambda e:
-                self.logout()
-
-            )
-
-
-
-        )
-
-
-
-
-
-
-        self.root.content = ft.Column(
-
-
-
-            controls=controls,
+            ],
 
 
 
@@ -1567,11 +1500,7 @@ class AppController:
 
 
 
-            spacing=12,
-
-
-
-            scroll=ft.ScrollMode.AUTO
+            spacing=12
 
 
 
@@ -1579,17 +1508,8 @@ class AppController:
 
 
 
-
-
         self.page.update()
-
-
-
-
-
-
-
-    # =========================
+            # =========================
     # DANH SÁCH HỌC SINH
     # =========================
 
@@ -1603,31 +1523,25 @@ class AppController:
         for student in self.students:
 
 
-
             if student.get("role") != "student":
 
-
                 continue
-
-
 
 
 
             rows.append(
 
 
-
                 ft.Text(
 
                     f"{student.get('id')} | "
                     f"{student.get('name')} | "
-                    f"Lớp {student.get('class')} | "
+                    f"Lớp: {student.get('class')} | "
                     f"Điểm: {student.get('score')}",
 
-                    size=15
+                    size=16
 
                 )
-
 
 
             )
@@ -1639,16 +1553,11 @@ class AppController:
         if len(rows) == 0:
 
 
-
             rows.append(
 
-
                 ft.Text(
-
-                    "Chưa có học sinh nào."
-
+                    "Chưa có học sinh."
                 )
-
 
             )
 
@@ -1660,7 +1569,6 @@ class AppController:
 
 
             controls=[
-
 
 
 
@@ -1684,7 +1592,6 @@ class AppController:
                     spacing=10
 
                 ),
-
 
 
 
@@ -1723,10 +1630,14 @@ class AppController:
 
 
 
-
-
         self.page.update()
-            # =========================
+
+
+
+
+
+
+    # =========================
     # THÊM HỌC SINH
     # =========================
 
@@ -1744,7 +1655,7 @@ class AppController:
 
 
                 self.show_message(
-                    "Chưa nhập họ tên học sinh!"
+                    "Chưa nhập họ tên!"
                 )
 
                 return
@@ -1759,11 +1670,10 @@ class AppController:
 
 
                 self.show_message(
-                    "Điểm phải từ 0 đến 10!"
+                    "Điểm không hợp lệ!"
                 )
 
                 return
-
 
 
 
@@ -1786,16 +1696,15 @@ class AppController:
 
 
 
-                "name":
 
-                name,
-
+                "name": name,
 
 
 
                 "class":
 
                 "Chưa xếp lớp",
+
 
 
 
@@ -1807,9 +1716,11 @@ class AppController:
 
 
 
+
                 "score":
 
                 float(self.new_score.value),
+
 
 
 
@@ -1821,11 +1732,10 @@ class AppController:
 
 
 
+
                 "image_proof":
 
                 ""
-
-
 
             }
 
@@ -1852,8 +1762,6 @@ class AppController:
 
 
             self.show_student_list()
-
-
 
 
 
@@ -1896,10 +1804,9 @@ class AppController:
 
 
 
-
                 ft.ElevatedButton(
 
-                    "Thêm học sinh",
+                    "Thêm",
 
                     width=180,
 
@@ -1925,7 +1832,6 @@ class AppController:
 
 
 
-
             horizontal_alignment=
             ft.CrossAxisAlignment.CENTER,
 
@@ -1939,16 +1845,8 @@ class AppController:
 
 
 
-
         self.page.update()
-
-
-
-
-
-
-
-    # =========================
+            # =========================
     # CẬP NHẬT ĐIỂM
     # =========================
 
@@ -1958,15 +1856,11 @@ class AppController:
         def update(e):
 
 
-            student_id = (
-                self.edit_student_id.value
-                .strip()
-                .upper()
-            )
+            sid = self.edit_student_id.value.strip().upper()
 
 
 
-            if student_id == "":
+            if sid == "":
 
 
                 self.show_message(
@@ -1994,36 +1888,25 @@ class AppController:
 
 
 
-
             for student in self.students:
-
 
 
                 if (
 
-
-                    student.get("role")
-                    ==
-                    "student"
-
+                    student.get("role") == "student"
 
                     and
 
-
-                    student.get("id", "").upper()
+                    student.get("id","").upper()
                     ==
-                    student_id
-
+                    sid
 
                 ):
-
-
 
 
                     student["score"] = float(
                         self.edit_score.value
                     )
-
 
 
                     self.save_data()
@@ -2036,12 +1919,7 @@ class AppController:
 
 
 
-                    self.clear_all_form()
-
-
-
                     self.show_admin_home()
-
 
 
                     return
@@ -2063,9 +1941,7 @@ class AppController:
         self.root.content = ft.Column(
 
 
-
             controls=[
-
 
 
 
@@ -2095,7 +1971,7 @@ class AppController:
 
                 ft.ElevatedButton(
 
-                    "Lưu điểm",
+                    "Lưu",
 
                     width=180,
 
@@ -2134,9 +2010,14 @@ class AppController:
 
 
 
-
         self.page.update()
-            # =========================
+
+
+
+
+
+
+    # =========================
     # TÌM KIẾM HỌC SINH
     # =========================
 
@@ -2150,15 +2031,7 @@ class AppController:
         )
 
 
-
-        result = ft.Column(
-
-            spacing=8,
-
-            horizontal_alignment=
-            ft.CrossAxisAlignment.CENTER
-
-        )
+        result = ft.Column()
 
 
 
@@ -2171,11 +2044,7 @@ class AppController:
 
 
 
-            key = (
-                keyword.value
-                .strip()
-                .lower()
-            )
+            key = keyword.value.strip().lower()
 
 
 
@@ -2192,43 +2061,28 @@ class AppController:
 
 
 
-
             found = False
-
-
 
 
 
             for student in self.students:
 
 
-
                 if student.get("role") != "student":
-
 
                     continue
 
 
 
 
-
-                sid = (
-                    student.get("id", "")
-                    .lower()
-                )
+                sid = student.get("id","").lower()
 
 
-                name = (
-                    student.get("name", "")
-                    .lower()
-                )
-
-
+                name = student.get("name","").lower()
 
 
 
                 if key in sid or key in name:
-
 
 
                     found = True
@@ -2237,20 +2091,14 @@ class AppController:
 
                     result.controls.append(
 
-
-
                         ft.Text(
 
                             f"{student.get('id')} | "
                             f"{student.get('name')} | "
                             f"Lớp {student.get('class')} | "
-                            f"Điểm: {student.get('score')}",
-
-                            size=16
+                            f"Điểm {student.get('score')}"
 
                         )
-
-
 
                     )
 
@@ -2259,26 +2107,16 @@ class AppController:
 
 
 
-
-            if not found:
-
+            if found == False:
 
 
                 result.controls.append(
 
-
-
                     ft.Text(
-
-                        "Không tìm thấy học sinh."
-
+                        "Không tìm thấy."
                     )
 
-
-
                 )
-
-
 
 
 
@@ -2292,9 +2130,7 @@ class AppController:
         self.root.content = ft.Column(
 
 
-
             controls=[
-
 
 
 
@@ -2316,23 +2152,15 @@ class AppController:
 
 
 
-
                 ft.ElevatedButton(
 
-                    "Tìm kiếm",
+                    "Tìm",
 
                     width=180,
 
                     on_click=search
 
                 ),
-
-
-
-
-
-                ft.Divider(),
-
 
 
 
@@ -2375,17 +2203,9 @@ class AppController:
 
 
 
-
-
         self.page.update()
-
-
-
-
-
-
-    # =========================
-    # QUẢN LÝ HỌC SINH
+            # =========================
+    # QUẢN LÝ / XÓA HỌC SINH
     # =========================
 
     def show_manage_student(self):
@@ -2398,9 +2218,7 @@ class AppController:
         for student in self.students:
 
 
-
             if student.get("role") != "student":
-
 
                 continue
 
@@ -2411,10 +2229,7 @@ class AppController:
             rows.append(
 
 
-
                 ft.Row(
-
-
 
                     controls=[
 
@@ -2423,8 +2238,7 @@ class AppController:
                         ft.Text(
 
                             f"{student.get('id')} | "
-                            f"{student.get('name')} | "
-                            f"Lớp {student.get('class')}",
+                            f"{student.get('name')}",
 
                             expand=True
 
@@ -2437,31 +2251,20 @@ class AppController:
 
                             "Xóa",
 
-                            on_click=
-                            lambda e,
-                            sid=student["id"]:
+                            on_click=lambda e,
+                            sid=student.get("id"):
                             self.delete_student(sid)
 
                         )
 
 
 
-                    ],
-
-
-
-
-                    alignment=
-                    ft.MainAxisAlignment.SPACE_BETWEEN
-
-
+                    ]
 
                 )
 
 
-
             )
-
 
 
 
@@ -2470,21 +2273,13 @@ class AppController:
         if len(rows) == 0:
 
 
-
             rows.append(
 
-
-
                 ft.Text(
-
-                    "Chưa có học sinh nào."
-
+                    "Chưa có học sinh."
                 )
 
-
-
             )
-
 
 
 
@@ -2493,9 +2288,7 @@ class AppController:
         self.root.content = ft.Column(
 
 
-
             controls=[
-
 
 
 
@@ -2508,7 +2301,6 @@ class AppController:
                     weight=ft.FontWeight.BOLD
 
                 ),
-
 
 
 
@@ -2558,10 +2350,14 @@ class AppController:
 
 
 
-
-
         self.page.update()
-            # =========================
+
+
+
+
+
+
+    # =========================
     # XÓA HỌC SINH
     # =========================
 
@@ -2571,25 +2367,13 @@ class AppController:
         for student in self.students:
 
 
-
-            if (
-
-                student.get("role") == "student"
-
-                and
-
-                student.get("id") == student_id
-
-            ):
-
+            if student.get("id") == student_id:
 
 
                 self.students.remove(student)
 
 
-
                 self.save_data()
-
 
 
                 self.show_message(
@@ -2597,9 +2381,7 @@ class AppController:
                 )
 
 
-
                 self.show_manage_student()
-
 
 
                 return
@@ -2612,22 +2394,6 @@ class AppController:
         self.show_message(
             "Không tìm thấy học sinh!"
         )
-
-
-
-
-
-
-    # =========================
-    # FILE PICKER WEB
-    # =========================
-
-    def on_file_picked(self, e):
-
-        # Flet Web chưa hỗ trợ ổn định
-        # Giữ hàm để tránh lỗi khi gọi
-
-        return
 
 
 
@@ -2661,9 +2427,7 @@ class AppController:
 
 
 
-
         for student in self.students:
-
 
 
             if "role" not in student:
@@ -2673,14 +2437,10 @@ class AppController:
 
 
 
-
-
             if "score" not in student:
 
 
                 student["score"] = 0
-
-
 
 
 
@@ -2695,8 +2455,9 @@ class AppController:
 
 
 
+
     # =========================
-    # LÀM MỚI DỮ LIỆU
+    # LÀM MỚI
     # =========================
 
     def refresh(self):
@@ -2705,70 +2466,39 @@ class AppController:
         self.load_data()
 
 
-
         self.check_data()
-
-
 
 
 
         if self.current_user:
 
 
-
             if self.current_user.get("role") == "admin":
-
 
 
                 self.show_admin_home()
 
 
 
-
             else:
-
-
-
-
-                for student in self.students:
-
-
-
-                    if (
-
-                        student.get("id")
-
-                        ==
-
-                        self.current_user.get("id")
-
-                    ):
-
-
-
-                        self.current_user = student
-
-
-
-                        break
-
-
-
 
 
                 self.show_student_home()
 
 
 
-
-
         else:
 
 
-
             self.show_role_select()
-                # =========================
-    # KHỞI ĐỘNG LẠI ỨNG DỤNG
+
+
+
+
+
+
+    # =========================
+    # KHỞI ĐỘNG LẠI
     # =========================
 
     def restart(self):
@@ -2777,13 +2507,10 @@ class AppController:
         self.current_user = None
 
 
-
         self.load_data()
 
 
-
         self.check_data()
-
 
 
         self.show_role_select()

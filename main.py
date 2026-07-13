@@ -9,6 +9,12 @@ def main(page: ft.Page):
     page.window_width = 900
     page.window_height = 650
 
+
+    page.theme_mode = ft.ThemeMode.LIGHT
+
+    page.bgcolor = ft.Colors.WHITE
+
+
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
 
@@ -22,11 +28,8 @@ def main(page: ft.Page):
     app.start()
 
 
-    page.update()
 
-
-
-ft.run(
-    main,
+ft.app(
+    target=main,
     view=ft.AppView.WEB_BROWSER
 )

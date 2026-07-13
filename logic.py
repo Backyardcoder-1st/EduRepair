@@ -519,6 +519,7 @@ class AppController:
             try:
                 self.file_picker = ft.FilePicker()
                 self.file_picker.on_result = self.on_file_picked
+
                 if self.file_picker not in self.page.overlay:
                     self.page.overlay.append(self.file_picker)
             except:

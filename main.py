@@ -1,5 +1,6 @@
 import flet as ft
 from logic import AppController
+import os
 
 
 def main(page: ft.Page):
@@ -29,7 +30,12 @@ def main(page: ft.Page):
 
 
 
+# Render will provide an environment variable called 'PORT'.
+# If it's not found (like when you run it locally), it defaults to 8080.
+port = int(os.getenv("PORT", 8080))
+
 ft.app(
     target=main,
-    view=ft.AppView.WEB_BROWSER
+    host="0.0.0.0",  # Tells Flet to accept connections from the public web
+    port=port
 )

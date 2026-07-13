@@ -1,59 +1,10 @@
 [
   {
-    "id": "001",
-    "key": "111111",
-    "name": "DINO",
-    "password": "0925524289",
-    "role": "teacher"
-  },
-  {
-    "id": "002",
-    "name": "Đinh Đức Tiến",
-    "score": 10.0
-  },
-  {
-    "class": "11",
-    "id": "005",
-    "name": "Đinh Đức Tiến",
-    "password": "toansung5533",
-    "score": 10.0
-  },
-  {
-    "class": "",
-    "id": "006",
-    "name": "Đinh Văn Nghĩa",
-    "password": "123456",
-    "score": 7.8
-  },
-  {
-    "class": "Chưa có",
-    "id": "007",
-    "name": "Lê Công Định",
-    "password": "123456",
-    "role": "student",
-    "score": 10
-  },
-  {
     "class": "11A1",
     "id": "009",
     "name": "DINO",
     "password": "0925524289",
     "score": 10.0
-  },
-  {
-    "class": "Chưa có",
-    "id": "031",
-    "name": "Loli11",
-    "password": "123456",
-    "role": "student",
-    "score": 10
-  },
-  {
-    "id": "058633",
-    "key": "Key123",
-    "name": "Nguyễn Thị Yến Nhi",
-    "password": "toansung987",
-    "role": "teacher"
   },
   {
     "class": "A1",

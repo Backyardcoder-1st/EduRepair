@@ -1,2 +1,4 @@
 flet==0.85.3
 requests
+flet
+certifi

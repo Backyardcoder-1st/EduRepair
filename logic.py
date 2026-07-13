@@ -512,16 +512,18 @@ class AppController:
         self.show_role_select()
 
     def start(self):
-        # Safety try/except wrapper preventing Unknown control crash on Web view
-        try:
-            self.file_picker = ft.FilePicker()
-            self.file_picker.on_result = self.on_file_picked
-
-            if self.file_picker not in self.page.overlay:
-                self.page.overlay.append(self.file_picker)
-        except Exception as e:
-            print(f"Bỏ qua FilePicker do giới hạn môi trường Web: {e}")
+        # KHÓA TUYỆT ĐỐI: Nếu chạy trên trình duyệt (Web), không bao giờ tạo FilePicker
+        if hasattr(self.page, "web") and self.page.web:
             self.file_picker = None
+        else:
+            try:
+                self.file_picker = ft.FilePicker()
+                self.file_picker.on_result = self.on_file_picked
+                if self.file_picker not in self.page.overlay:
+                    self.page.overlay.append(self.file_picker)
+            except:
+                self.file_picker = None
 
+        # Tải dữ liệu và hiển thị giao diện chính
         self.load_data()
         self.show_role_select()

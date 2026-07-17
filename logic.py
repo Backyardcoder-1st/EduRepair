@@ -1441,38 +1441,24 @@ class AppController:
 
         rows = []
 
+        # 1. Compact Header Row scaled explicitly for mobile viewports
         header = ft.Container(
             bgcolor=self.blue,
             padding=10,
             border_radius=8,
             content=ft.Row(
                 controls=[
-                    ft.Text(
-                        "Mã",
-                        color="white",
-                        width=80
-                    ),
-                    ft.Text(
-                        "Họ tên",
-                        color="white",
-                        expand=True
-                    ),
-                    ft.Text(
-                        "Lớp",
-                        color="white",
-                        width=100
-                    ),
-                    ft.Text(
-                        "Điểm",
-                        color="white",
-                        width=80
-                    )
+                    ft.Text("Mã", color="white", width=50, size=12, weight=ft.FontWeight.BOLD),
+                    ft.Text("Họ tên", color="white", expand=True, size=12, weight=ft.FontWeight.BOLD),
+                    ft.Text("Lớp", color="white", width=50, size=12, weight=ft.FontWeight.BOLD),
+                    ft.Text("Điểm", color="white", width=40, size=12, weight=ft.FontWeight.BOLD)
                 ]
             )
         )
 
         rows.append(header)
 
+        # 2. Iterate and append student records safely using matching cell widths
         for student in self.students:
             if student.get("role") != "student":
                 continue
@@ -1486,50 +1472,58 @@ class AppController:
                     border_radius=8,
                     content=ft.Row(
                         controls=[
-                            ft.Text(
-                                student.get("id"),
-                                width=80
-                            ),
-                            ft.Text(
-                                student.get("name"),
-                                expand=True
-                            ),
-                            ft.Text(
-                                student.get("class"),
-                                width=100
-                            ),
-                            ft.Text(
-                                str(score),
-                                width=80
-                            )
+                            ft.Text(student.get("id", ""), width=50, size=12),
+                            ft.Text(student.get("name", ""), expand=True, size=12, max_lines=1),
+                            ft.Text(student.get("class", ""), width=50, size=12),
+                            ft.Text(str(score), width=40, size=12)
                         ]
                     )
                 )
             )
 
-        body = ft.Column(
+        # 3. Top Control Bar layout containing the Title and the top-right Back Button
+        top_bar = ft.Row(
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
             controls=[
-                self.title(
-                    "DANH SÁCH ĐĂNG KÍ LAO ĐỘNG"
-                ),
-
                 ft.Column(
-                    controls=rows,
-                    scroll=ft.ScrollMode.AUTO
+                    spacing=1,
+                    controls=[
+                        ft.Text("DANH SÁCH ĐĂNG KÝ", size=15, weight=ft.FontWeight.BOLD, color=self.dark),
+                        ft.Text("Quản lý lao động", size=11, color=self.gray)
+                    ]
                 ),
-
-                ft.Container(height=10),
-
-                # Clean, prominent back button
-                self.button(
-                    "Quay lại",
-                    lambda e: self.show_admin_home(),
-                    self.gray
+                # Clean, top-right absolute-style Mini Back Button
+                ft.Container(
+                    on_click=lambda e: self.show_admin_home(),
+                    padding=ft.Padding(10, 6, 10, 6),
+                    border_radius=8,
+                    bgcolor="#E2E8F0",  # Professional soft gray background
+                    content=ft.Text("Quay lại", size=11, color=self.gray, weight=ft.FontWeight.BOLD)
                 )
             ]
         )
 
-        self.root.content = self.card(body, 750)
+        # 4. Assemble components inside a dedicated layout flow
+        body = ft.Column(
+            spacing=15,
+            controls=[
+                top_bar,
+
+                # Fixed height frame layout container to correctly activate vertical scroll mechanics
+                ft.Container(
+                    content=ft.Column(
+                        controls=rows,
+                        scroll=ft.ScrollMode.AUTO,
+                        spacing=8
+                    ),
+                    height=380,  # Limits frame height to force touchscreen vertical dragging
+                )
+            ]
+        )
+
+        # 5. Output rendering target matching standard 380px phone width
+        self.root.content = self.card(body, 380)
         self.page.update()
 
     # =========================

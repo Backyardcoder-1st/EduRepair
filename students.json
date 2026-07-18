@@ -45,9 +45,18 @@
         "score": 0
     },
     {
-        "id": "HS06",
-        "name": "Nguyễn",
         "class": "A1",
+        "id": "HS06",
+        "image": "",
+        "name": "Nguyễn",
+        "password": "1",
+        "role": "student",
+        "score": 0
+    },
+    {
+        "id": "HS07",
+        "name": "1",
+        "class": "A2",
         "password": "1",
         "score": 0,
         "role": "student",

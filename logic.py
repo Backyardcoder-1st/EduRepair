@@ -1495,7 +1495,7 @@ class AppController:
                 ),
                 # Clean, top-right absolute-style Mini Back Button
                 ft.Container(
-                    on_click=lambda e: self.show_admin_home(),
+                    on_click=lambda e: self.show_admin_home() if self.current_user.get("role") == "admin" else self.show_student_home(),
                     padding=ft.Padding(10, 6, 10, 6),
                     border_radius=8,
                     bgcolor="#E2E8F0",  # Professional soft gray background
@@ -2036,7 +2036,7 @@ class AppController:
 
         student = self.current_user
 
-        # 1. Profile Header Box
+        # 1. Profile Header Box (Maintains student specific name, class, and ID)
         profile_header = ft.Container(
             width=340,
             padding=12,
@@ -2048,6 +2048,7 @@ class AppController:
                 controls=[
                     ft.Row(
                         spacing=10,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
                         controls=[
                             # Profile Avatar image container
                             ft.Container(
@@ -2066,14 +2067,12 @@ class AppController:
                             ft.Column(
                                 spacing=1,
                                 controls=[
-                                    # Modified line: Combines name and class dynamically (e.g., "Đinh Đức Tiến-A1")
                                     ft.Text(
                                         student.get("name", "") + "-" + student.get("class", ""),
                                         size=15,
                                         weight=ft.FontWeight.BOLD,
                                         color=self.dark
                                     ),
-
                                     ft.Text("Học sinh", size=11, color=self.gray),
                                     ft.Text("ID: " + student.get("id", ""), size=11, color=self.gray),
                                 ]
@@ -2092,19 +2091,105 @@ class AppController:
             )
         )
 
-        # 2. Compile elements
+        # 2. Reusable Card Builder (Using coordinate centering system)
+        def feature_card(title, icon_char, color, bg_color, click_handler):
+            return ft.Container(
+                width=135,
+                height=130,
+                bgcolor=bg_color,
+                border_radius=15,
+                padding=12,
+                on_click=click_handler,
+                content=ft.Column(
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    horizontal_alignment=ft.CrossAxisAlignment.START,
+                    controls=[
+                        # Clean mini logo circle for visual interest
+                        ft.Container(
+                            width=32,
+                            height=32,
+                            border_radius=8,
+                            bgcolor=color,
+                            alignment=ft.alignment.Alignment(0, 0),  # Fixed: True mathematical alignment center
+                            content=ft.Text(
+                                icon_char,
+                                size=15,
+                                color="white",
+                                weight=ft.FontWeight.BOLD
+                            )
+                        ),
+                        # Label text
+                        ft.Text(
+                            title,
+                            size=12,
+                            weight=ft.FontWeight.BOLD,
+                            color=self.dark
+                        )
+                    ]
+                )
+            )
+
+        # 3. Swipeable horizontal sliding board mapped with student tool features
+        sliding_board = ft.Row(
+            controls=[
+                feature_card("Phần việc đăng kí", "📝", self.blue, "#EFF6FF", lambda e: self.show_student_list()),
+                feature_card("Phần việc hoàn thành", "✅", self.green, "#F0FDF4", lambda e: self.show_message("Chức năng 'Phần việc hoàn thành' đang phát triển!")),
+                feature_card("Lỗi vi phạm", "⚠️", self.red, "#FEF2F2", lambda e: self.show_message("Chức năng 'Lỗi vi phạm' đang phát triển!")),
+                feature_card("Tiến trình rèn luyện", "⏳", self.orange, "#FFF7ED", lambda e: self.show_message("Chức năng 'Tiến trình rèn luyện' đang phát triển!")),
+            ],
+            scroll=ft.ScrollMode.AUTO,  # Enables safe horizontal swiping/scrolling on mobile screens
+            spacing=10
+        )
+
+        # 4. Compile mobile view elements into the master layout column
         dashboard_content = ft.Column(
             controls=[
-                self.title("Trang cá nhân"),
+                self.title("TRANG CÁ NHÂN"),
                 ft.Container(height=5),
 
-                # Render only the profile header card
+                # Render Profile Info Card
                 profile_header,
+                ft.Container(height=15),
+
+                # Sliding Board Carousel Title - Set to "Tính năng"
+                ft.Row(
+                    controls=[
+                        ft.Text("Tính năng", size=14, weight=ft.FontWeight.BOLD, color=self.dark),
+                        ft.Text("Cuộn ngang ➔", size=10, color=self.gray)
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+                ),
+                ft.Container(height=5),
+
+                # Render the sliding board carousel
+                sliding_board,
+                ft.Container(height=15),
+
+                # Minimalist System Status Info card
+                ft.Container(
+                    width=340,
+                    padding=12,
+                    bgcolor="#F8FAFC",
+                    border_radius=12,
+                    content=ft.Row(
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        controls=[
+                            ft.Column(
+                                spacing=2,
+                                controls=[
+                                    ft.Text("Tình trạng hệ thống", size=12, weight=ft.FontWeight.BOLD, color=self.dark),
+                                    ft.Text("Đang kết nối cơ sở dữ liệu", size=11, color=self.gray)
+                                ]
+                            ),
+                            ft.Text("Hoạt động", size=10, color=self.green, weight=ft.FontWeight.BOLD)
+                        ]
+                    )
+                )
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
 
-        # Output centered on clean 380px mobile layout width
+        # Output centered on clean, beautiful mobile widths (380px)
         self.root.content = self.card(dashboard_content, 380)
         self.page.update()
 

@@ -285,8 +285,8 @@ class AppController:
             filled=True
 
         )
-        # =========================
 
+    # =========================
     # THÔNG BÁO
     # =========================
 
@@ -304,7 +304,6 @@ class AppController:
 
             self.page.update()
 
-
         except:
 
             pass
@@ -316,10 +315,6 @@ class AppController:
     def load_data(self):
 
         self.students = []
-
-        # -------------------------
-        # LẤY TỪ FIREBASE
-        # -------------------------
 
         try:
 
@@ -355,8 +350,6 @@ class AppController:
 
                     )
 
-
-
                 elif isinstance(data, list):
 
                     self.students = data
@@ -367,10 +360,6 @@ class AppController:
 
                 )
 
-
-
-
-
         except Exception as e:
 
             print(
@@ -380,11 +369,6 @@ class AppController:
                 e
 
             )
-
-        # -------------------------
-        # NẾU FIREBASE LỖI
-        # LẤY FILE LOCAL
-        # -------------------------
 
         if len(self.students) == 0:
 
@@ -412,10 +396,6 @@ class AppController:
 
                     )
 
-
-
-
-
             except Exception as e:
 
                 print(
@@ -425,10 +405,6 @@ class AppController:
                     e
 
                 )
-
-        # -------------------------
-        # DATA MẪU
-        # -------------------------
 
         if len(self.students) == 0:
             self.students = [
@@ -509,9 +485,6 @@ class AppController:
 
             )
 
-
-
-
         except Exception as e:
 
             print(
@@ -574,11 +547,6 @@ class AppController:
 
                 return True
 
-
-
-
-
-
         except Exception as e:
 
             print(
@@ -597,11 +565,7 @@ class AppController:
 
     def save_data(self):
 
-        # luôn backup trước
-
         self.backup_local()
-
-        # sau đó đồng bộ web
 
         ok = self.sync_firebase()
 
@@ -613,7 +577,6 @@ class AppController:
 
             )
 
-
         else:
 
             print(
@@ -621,8 +584,8 @@ class AppController:
                 "Chỉ lưu local"
 
             )
-            # =========================
 
+    # =========================
     # START APP
     # =========================
 
@@ -699,8 +662,6 @@ class AppController:
 
             score = float(score)
 
-
-
         except:
 
             return False
@@ -713,16 +674,14 @@ class AppController:
 
     def validate_student_register(self):
         name = self.student_name.value.strip()
-        cls = self.student_class.value  # Dropped .strip() since it is now a Dropdown
+        cls = self.student_class.value
         password = self.student_password.value
 
         if name == "":
             return False, "Chưa nhập họ tên"
 
-        # --- ADD THIS BLOCK HERE ---
         if cls is None or cls == "":
             return False, "Chưa chọn lớp học"
-        # ---------------------------
 
         if password == "":
             return False, "Chưa nhập mật khẩu"
@@ -738,10 +697,9 @@ class AppController:
             ):
                 return False, "Tài khoản đã tồn tại"
 
-        return True, ""  # Cleaned return statement without the trailing comma bug
+        return True, ""
 
-        # =========================
-
+    # =========================
     # XÓA FORM
     # =========================
 
@@ -777,53 +735,49 @@ class AppController:
 
             self.page.update()
 
-
-
         except:
 
             pass
-            # =========================
 
+    # =========================
     # MÀN HÌNH CHỌN VAI TRÒ
     # =========================
 
     def show_role_select(self):
         body = ft.Column(
             controls=[
-                # 1. Main Header Mascot Logo (Dinosaur Logo)
                 ft.Container(
                     width=90,
                     height=90,
-                    alignment=ft.alignment.Alignment(0, 0),  # Safe centering
+                    alignment=ft.alignment.Alignment(0, 0),
                     content=ft.Image(
-                        src="LOGO.png",  # Loads assets/logo.png
+                        src="LOGO.png",
                         width=90,
                         height=90,
                     )
                 ),
                 ft.Text(
-                    "EduRepair",  # Updated name capitalization
+                    "EduRepair",
                     size=30,
                     weight=ft.FontWeight.BOLD,
                     color=self.dark,
                     text_align=ft.TextAlign.CENTER
                 ),
                 ft.Text(
-                    "Hệ thống quản lí-đăng kí lao động",  # Slogan
+                    "Hệ thống quản lí-đăng kí lao động",
                     size=18,
                     weight=ft.FontWeight.W_500,
-                    color=self.dark,  # Updated color to self.dark
+                    color=self.dark,
                     text_align=ft.TextAlign.CENTER
                 ),
                 ft.Text(
                     "Chọn quyền truy cập",
                     size=15,
-                    color=self.dark,  # Updated color to self.dark
+                    color=self.dark,
                     text_align=ft.TextAlign.CENTER
                 ),
                 ft.Container(height=10),
 
-                # 2. Admin Access Row (Width: 340, Height: 100)
                 ft.Container(
                     width=340,
                     height=100,
@@ -834,17 +788,15 @@ class AppController:
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                         vertical_alignment=ft.CrossAxisAlignment.CENTER,
                         controls=[
-                            # Left: Admin Image Icon
                             ft.Container(
                                 width=50,
                                 height=50,
                                 content=ft.Image(
-                                    src="ADMIN.png",  # Loads assets/admin_icon.png
+                                    src="ADMIN.png",
                                     width=50,
                                     height=50,
                                 )
                             ),
-                            # Middle: Labels
                             ft.Column(
                                 spacing=2,
                                 expand=True,
@@ -854,7 +806,6 @@ class AppController:
                                 ],
                                 alignment=ft.MainAxisAlignment.CENTER
                             ),
-                            # Right: Button
                             ft.ElevatedButton(
                                 "Đăng nhập",
                                 bgcolor=self.blue,
@@ -870,7 +821,6 @@ class AppController:
                 ),
                 ft.Container(height=8),
 
-                # 3. Student Access Row (Width: 340, Height: 100)
                 ft.Container(
                     width=340,
                     height=100,
@@ -881,17 +831,15 @@ class AppController:
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                         vertical_alignment=ft.CrossAxisAlignment.CENTER,
                         controls=[
-                            # Left: Student Image Icon
                             ft.Container(
                                 width=50,
                                 height=50,
                                 content=ft.Image(
-                                    src="STUDENT.png",  # Loads assets/student_icon.png
+                                    src="STUDENT.png",
                                     width=50,
                                     height=50,
                                 )
                             ),
-                            # Middle: Labels
                             ft.Column(
                                 spacing=2,
                                 expand=True,
@@ -901,7 +849,6 @@ class AppController:
                                 ],
                                 alignment=ft.MainAxisAlignment.CENTER
                             ),
-                            # Right: Button
                             ft.ElevatedButton(
                                 "Đăng nhập",
                                 bgcolor=self.green,
@@ -919,7 +866,6 @@ class AppController:
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
 
-        # Render the card with a mobile-optimized container width (380px)
         self.root.content = self.card(body, 380)
         self.page.update()
 
@@ -969,25 +915,20 @@ class AppController:
 
                 ft.TextButton(
                     "Quay lại",
-                    on_click=lambda e:
-                    self.show_role_select()
+                    on_click=lambda e: self.show_role_select()
                 )
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
 
-        self.root.content = self.card(
-            body,
-            380  # Keeps it looking clean and aligned on mobile!
-        )
-
+        self.root.content = self.card(body, 380)
         self.page.update()
 
     # =========================
     # ĐĂNG NHẬP HỌC SINH
     # =========================
     def show_student_login(self):
-        self.login_error_text.value = ""  # Reset error message on page entry
+        self.login_error_text.value = ""
 
         def login(e):
             name = self.student_login_name.value.strip()
@@ -1003,7 +944,6 @@ class AppController:
                     self.show_student_home()
                     return
 
-            # Display small red text under the board
             self.login_error_text.value = "Sai tên người dùng hoặc mật khẩu"
             self.page.update()
 
@@ -1017,48 +957,42 @@ class AppController:
 
                 self.student_login_password,
 
-                self.login_error_text,  # Error label placed under the input fields
+                self.login_error_text,
 
                 self.button(
                     "Đăng nhập",
                     login,
-                    self.green  # Changed from self.green to self.blue
+                    self.green
                 ),
 
                 self.button(
                     "Đăng ký",
-                    lambda e:
-                    self.show_register_student(),
+                    lambda e: self.show_register_student(),
                     self.orange
                 ),
 
                 ft.TextButton(
                     "Quay lại",
-                    on_click=lambda e:
-                    self.show_role_select()
+                    on_click=lambda e: self.show_role_select()
                 )
 
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
 
-        self.root.content = self.card(
-            body
-        )
+        self.root.content = self.card(body, 380)
         self.page.update()
-        # =========================
 
+    # =========================
     # ĐĂNG KÝ HỌC SINH
     # =========================
-
     def show_register_student(self):
-        self.register_error_text.value = ""  # Reset error message on page entry
+        self.register_error_text.value = ""
 
         def register(e):
             ok, msg = self.validate_student_register()
 
             if ok == False:
-                # Set dynamic red error label instead of popup message
                 self.register_error_text.value = msg
                 self.page.update()
                 return
@@ -1075,7 +1009,6 @@ class AppController:
 
             self.students.append(student)
 
-            # lưu local + firebase
             self.save_data()
 
             self.show_message(
@@ -1098,66 +1031,48 @@ class AppController:
 
                 self.student_confirm,
 
-                self.register_error_text,  # Error label placed under the input fields
+                self.register_error_text,
 
                 self.button(
                     "Hoàn tất",
                     register,
-                    self.green  # Changed from self.green to self.blue
+                    self.green
                 ),
 
                 ft.TextButton(
                     "Quay lại",
-                    on_click=lambda e:
-                    self.show_student_login()
+                    on_click=lambda e: self.show_student_login()
                 )
 
             ],
-
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
 
-        self.root.content = self.card(
-            body
-        )
+        self.root.content = self.card(body, 380)
         self.page.update()
 
     # =========================
     # ĐỌC ẢNH
     # =========================
-
     def read_image(self, path):
 
         try:
 
             with open(
-
                     path,
-
                     "rb"
-
             ) as image:
-
                 data = base64.b64encode(
-
                     image.read()
-
                 )
 
                 return data.decode()
 
-
-
-
-
         except Exception as e:
 
             print(
-
                 "Ảnh lỗi:",
-
                 e
-
             )
 
             return ""
@@ -1165,7 +1080,6 @@ class AppController:
     # =========================
     # LƯU ẢNH HỌC SINH
     # =========================
-
     def save_student_image(self):
 
         if self.current_user is None:
@@ -1175,9 +1089,7 @@ class AppController:
 
         if path == "":
             self.show_message(
-
                 "Chưa nhập đường dẫn ảnh"
-
             )
 
             return
@@ -1186,9 +1098,7 @@ class AppController:
 
         if image == "":
             self.show_message(
-
                 "Không đọc được ảnh"
-
             )
 
             return
@@ -1200,88 +1110,20 @@ class AppController:
 
                 self.current_user = student
 
-                # đồng bộ Firebase
-
                 self.save_data()
 
                 self.show_message(
-
                     "Đã cập nhật ảnh"
-
                 )
 
                 self.show_student_home()
 
                 return
-                # =========================
-
-        # =========================
-        # TRANG ĐĂNG NHẬP ADMIN
-        # =========================
-        def show_admin_login(self):
-
-            def login(e):
-                key = self.admin_key_login.value.strip()
-
-                if key == self.admin_key:
-                    # Logs in under the custom admin account name!
-                    self.current_user = {
-                        "role": "admin",
-                        "name": "Võ Thị Yến Nhi"
-                    }
-                    self.show_admin_home()
-                else:
-                    self.show_message(
-                        "Sai mã bảo mật Admin!"
-                    )
-
-            body = ft.Column(
-                controls=[
-                    self.title(
-                        "ĐĂNG NHẬP ADMIN"
-                    ),
-
-                    ft.Text(
-                        "Nhập khóa cấu hình hệ thống",
-                        size=13,
-                        color=self.dark,
-                        text_align=ft.TextAlign.CENTER
-                    ),
-
-                    ft.Container(height=10),
-
-                    self.admin_key_login,
-
-                    ft.Container(height=10),
-
-                    self.button(
-                        "Đăng nhập",
-                        login,
-                        self.blue
-                    ),
-
-                    ft.TextButton(
-                        "Quay lại",
-                        on_click=lambda e:
-                        self.show_role_select()
-                    )
-                ],
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER
-            )
-
-            self.root.content = self.card(body, 380)
-            self.page.update()
-            # =========================
-
-    # DANH SÁCH HỌC SINH
-    # =========================
 
     # =========================
     # TRANG ADMIN DASHBOARD
     # =========================
     def show_admin_home(self):
-
-        # 1. Profile Header Box
         profile_header = ft.Container(
             width=340,
             padding=12,
@@ -1294,7 +1136,6 @@ class AppController:
                     ft.Row(
                         spacing=10,
                         controls=[
-                            # Profile Avatar with ADMIN.png image
                             ft.Container(
                                 width=46,
                                 height=46,
@@ -1307,7 +1148,6 @@ class AppController:
                                     border_radius=23,
                                 )
                             ),
-                            # Name and Role labels
                             ft.Column(
                                 spacing=1,
                                 controls=[
@@ -1317,12 +1157,8 @@ class AppController:
                             )
                         ]
                     ),
-
-                    # Log-out Mini Button
                     ft.Container(
-                        # --- CHANGED THIS LINE TO TARGET THE ROLE SELECT VIEW ---
                         on_click=lambda e: self.show_role_select(),
-                        # --------------------------------------------------------
                         padding=ft.Padding(8, 5, 8, 5),
                         border_radius=8,
                         bgcolor="#FEE2E2",
@@ -1332,7 +1168,6 @@ class AppController:
             )
         )
 
-        # Helper card styling generator for the sliding board carousel
         def feature_card(title, icon_char, color, bg_color, click_handler):
             return ft.Container(
                 width=135,
@@ -1345,7 +1180,6 @@ class AppController:
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     horizontal_alignment=ft.CrossAxisAlignment.START,
                     controls=[
-                        # Clean mini logo circle for visual interest
                         ft.Container(
                             width=32,
                             height=32,
@@ -1353,27 +1187,20 @@ class AppController:
                             bgcolor=color,
                             alignment=ft.alignment.Alignment(0, 0),
                             content=ft.Text(
-                                icon_char,
-                                size=15,
-                                color="white",
-                                weight=ft.FontWeight.BOLD
+                                icon_char, size=15, color="white", weight=ft.FontWeight.BOLD
                             )
                         ),
-                        # Label text
                         ft.Text(
-                            title,
-                            size=12,
-                            weight=ft.FontWeight.BOLD,
-                            color=self.dark
+                            title, size=12, weight=ft.FontWeight.BOLD, color=self.dark
                         )
                     ]
                 )
             )
 
-        # 2. Swipeable horizontal sliding board
         sliding_board = ft.Row(
             controls=[
                 feature_card("Danh sách đăng kí", "📝", self.blue, "#EFF6FF", lambda e: self.show_student_list()),
+                feature_card("Lớp học", "🏫", "#7C3AED", "#F3E8FF", lambda e: self.show_admin_classes()),
                 feature_card("Lỗi vi phạm", "⚠️", self.red, "#FEF2F2",
                              lambda e: self.show_message("Chức năng 'Lỗi vi phạm' đang phát triển!")),
                 feature_card("Tiến trình lao động", "⏳", self.orange, "#FFF7ED",
@@ -1381,21 +1208,16 @@ class AppController:
                 feature_card("Kết quả lao động", "✅", self.green, "#F0FDF4",
                              lambda e: self.show_message("Chức năng 'Kết quả' đang phát triển!")),
             ],
-            scroll=ft.ScrollMode.AUTO,  # Enables safe horizontal swiping/scrolling
+            scroll=ft.ScrollMode.AUTO,
             spacing=10
         )
 
-        # Compile mobile view elements
         dashboard_content = ft.Column(
             controls=[
                 self.title("BẢNG ĐIỀU KHIỂN"),
                 ft.Container(height=5),
-
-                # Render Profile Info Card
                 profile_header,
                 ft.Container(height=15),
-
-                # Sliding Board Carousel Title
                 ft.Row(
                     controls=[
                         ft.Text("Công cụ quản lý", size=14, weight=ft.FontWeight.BOLD, color=self.dark),
@@ -1404,12 +1226,8 @@ class AppController:
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN
                 ),
                 ft.Container(height=5),
-
-                # Render the sliding board
                 sliding_board,
                 ft.Container(height=15),
-
-                # Minimalist System Status Info card
                 ft.Container(
                     width=340,
                     padding=12,
@@ -1433,15 +1251,82 @@ class AppController:
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
 
-        # Output centered on clean, beautiful mobile widths (380px)
         self.root.content = self.card(dashboard_content, 380)
         self.page.update()
 
-    def show_student_list(self):
+    # =========================
+    # DANH SÁCH LỚP HỌC (INNER VIEW)
+    # =========================
+    def show_admin_classes(self):
+        top_bar = ft.Row(
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            controls=[
+                ft.Column(
+                    spacing=1,
+                    controls=[
+                        ft.Text("DANH SÁCH LỚP", size=15, weight=ft.FontWeight.BOLD, color=self.dark),
+                        ft.Text("Chọn một lớp để xem học sinh", size=11, color=self.gray)
+                    ]
+                ),
+                ft.Container(
+                    on_click=lambda e: self.show_admin_home(),
+                    padding=ft.Padding(10, 6, 10, 6),
+                    border_radius=8,
+                    bgcolor="#E2E8F0",
+                    content=ft.Text("Quay lại", size=11, color=self.dark, weight=ft.FontWeight.BOLD)
+                )
+            ]
+        )
 
+        class_buttons = []
+        classes = [f"A{i}" for i in range(1, 11)]
+
+        for c in classes:
+            class_buttons.append(
+                ft.Container(
+                    content=ft.Text(c, weight=ft.FontWeight.BOLD, color="#7C3AED", size=14),
+                    alignment="center",
+                    width=160,
+                    height=52,
+                    bgcolor="#F3E8FF",
+                    border_radius=12,
+                    on_click=lambda e, name=c: self.show_student_list(class_filter=name),
+                )
+            )
+
+        grid_rows = []
+        for i in range(0, len(class_buttons), 2):
+            grid_rows.append(
+                ft.Row(
+                    controls=class_buttons[i:i + 2],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    spacing=12
+                )
+            )
+
+        body = ft.Column(
+            controls=[
+                top_bar,
+                ft.Container(height=10),
+                ft.Column(
+                    controls=grid_rows,
+                    spacing=12,
+                    scroll=ft.ScrollMode.AUTO
+                )
+            ],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER
+        )
+
+        self.root.content = self.card(body, 380)
+        self.page.update()
+
+    # =========================
+    # DANH SÁCH HỌC SINH (UPDATED SMART FILTER)
+    # =========================
+    def show_student_list(self, class_filter=None):
         rows = []
 
-        # 1. Compact Header Row scaled explicitly for mobile viewports
         header = ft.Container(
             bgcolor=self.blue,
             padding=10,
@@ -1455,16 +1340,16 @@ class AppController:
                 ]
             )
         )
-
         rows.append(header)
 
-        # 2. Iterate and append student records safely using matching cell widths
         for student in self.students:
             if student.get("role") != "student":
                 continue
 
-            score = student.get("score", 0)
+            if class_filter and (class_filter != student.get("class") and class_filter not in student.get("class", "")):
+                continue
 
+            score = student.get("score", 0)
             rows.append(
                 ft.Container(
                     bgcolor="white",
@@ -1481,7 +1366,9 @@ class AppController:
                 )
             )
 
-        # 3. Top Control Bar layout containing the Title and the top-right Back Button
+        display_title = f"LỚP {class_filter}" if class_filter else "DANH SÁCH ĐĂNG KÝ"
+        display_sub = f"Danh sách học sinh lớp {class_filter}" if class_filter else "Quản lý lao động"
+
         top_bar = ft.Row(
             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -1489,554 +1376,202 @@ class AppController:
                 ft.Column(
                     spacing=1,
                     controls=[
-                        ft.Text("DANH SÁCH ĐĂNG KÝ", size=15, weight=ft.FontWeight.BOLD, color=self.dark),
-                        ft.Text("Quản lý lao động", size=11, color=self.gray)
+                        ft.Text(display_title, size=15, weight=ft.FontWeight.BOLD, color=self.dark),
+                        ft.Text(display_sub, size=11, color=self.gray)
                     ]
                 ),
-                # Clean, top-right absolute-style Mini Back Button
                 ft.Container(
-                    on_click=lambda e: self.show_admin_home() if self.current_user.get("role") == "admin" else self.show_student_home(),
+                    on_click=lambda e: self.show_admin_classes() if class_filter else (
+                        self.show_admin_home() if self.current_user.get(
+                            "role") == "admin" else self.show_student_home()),
                     padding=ft.Padding(10, 6, 10, 6),
                     border_radius=8,
-                    bgcolor="#E2E8F0",  # Professional soft gray background
-                    content=ft.Text("Quay lại", size=11, color=self.gray, weight=ft.FontWeight.BOLD)
+                    bgcolor="#E2E8F0",
+                    content=ft.Text("Quay lại", size=11, color=self.dark, weight=ft.FontWeight.BOLD)
                 )
             ]
         )
 
-        # 4. Assemble components inside a dedicated layout flow
         body = ft.Column(
             spacing=15,
             controls=[
                 top_bar,
-
-                # Fixed height frame layout container to correctly activate vertical scroll mechanics
                 ft.Container(
                     content=ft.Column(
                         controls=rows,
                         scroll=ft.ScrollMode.AUTO,
                         spacing=8
                     ),
-                    height=380,  # Limits frame height to force touchscreen vertical dragging
+                    height=380,
                 )
             ]
         )
 
-        # 5. Output rendering target matching standard 380px phone width
         self.root.content = self.card(body, 380)
         self.page.update()
 
     # =========================
     # THÊM HỌC SINH
     # =========================
-
     def show_add_student(self):
-
         def add(e):
-
             if self.new_name.value.strip() == "":
-                self.show_message(
-
-                    "Chưa nhập tên"
-
-                )
-
+                self.show_message("Chưa nhập tên")
                 return
-
-            if not self.check_score(
-
-                    self.new_score.value
-
-            ):
-                self.show_message(
-
-                    "Điểm không hợp lệ"
-
-                )
-
+            if not self.check_score(self.new_score.value):
+                self.show_message("Điểm không hợp lệ")
                 return
-
             student = {
-
-                "id":
-
-                    self.new_id.value.strip()
-
-                    if self.new_id.value.strip()
-
-                    else
-
-                    self.create_student_id(),
-
-                "name":
-
-                    self.new_name.value.strip(),
-
-                "class":
-
-                    "Chưa xếp lớp",
-
-                "password":
-
-                    "123456",
-
-                "score":
-
-                    float(
-
-                        self.new_score.value
-
-                    ),
-
-                "role":
-
-                    "student",
-
-                "image":
-
-                    ""
-
+                "id": self.new_id.value.strip() if self.new_id.value.strip() else self.create_student_id(),
+                "name": self.new_name.value.strip(),
+                "class": "Chưa xếp lớp",
+                "password": "123456",
+                "score": float(self.new_score.value),
+                "role": "student",
+                "image": ""
             }
-
             self.students.append(student)
-
-            # lưu local + firebase
-
             self.save_data()
-
-            self.show_message(
-
-                "Thêm học sinh thành công"
-
-            )
-
+            self.show_message("Thêm học sinh thành công")
             self.show_student_list()
 
         body = ft.Column(
-
             controls=[
-
-                self.title(
-
-                    "THÊM HỌC SINH"
-
-                ),
-
+                self.title("THÊM HỌC SINH"),
                 self.new_id,
-
                 self.new_name,
-
                 self.new_score,
-
-                self.button(
-
-                    "Thêm",
-
-                    add,
-
-                    self.green
-
-                ),
-
-                ft.TextButton(
-
-                    "Quay lại",
-
-                    on_click=lambda e:
-
-                    self.show_admin_home()
-
-                )
-
+                self.button("Thêm", add, self.green),
+                ft.TextButton("Quay lại", on_click=lambda e: self.show_admin_home())
             ],
-
-            horizontal_alignment=
-
-            ft.CrossAxisAlignment.CENTER
-
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
-
-        self.root.content = self.card(
-
-            body
-
-        )
-
+        self.root.content = self.card(body)
         self.page.update()
-        # =========================
 
+    # =========================
     # QUẢN LÝ XÓA HỌC SINH
     # =========================
-
     def show_manage_student(self):
-
         items = []
-
         for student in self.students:
-
             if student.get("role") != "student":
                 continue
-
             items.append(
-
                 ft.Container(
-
                     bgcolor="white",
-
                     padding=10,
-
                     border_radius=10,
-
                     content=ft.Row(
-
                         controls=[
-
-                            ft.Text(
-
-                                student.get("id")
-
-                                + " - "
-
-                                + student.get("name"),
-
-                                expand=True
-
-                            ),
-
-                            ft.ElevatedButton(
-
-                                "Xóa",
-
-                                bgcolor=self.red,
-
-                                color="white",
-
-                                on_click=lambda e,
-
-                                                sid=student.get("id"):
-
-                                self.delete_student(sid)
-
-                            )
-
+                            ft.Text(student.get("id") + " - " + student.get("name"), expand=True),
+                            ft.ElevatedButton("Xóa", bgcolor=self.red, color="white",
+                                              on_click=lambda e, sid=student.get("id"): self.delete_student(sid))
                         ]
-
                     )
-
                 )
-
             )
-
         body = ft.Column(
-
             controls=[
-
-                self.title(
-
-                    "XÓA HỌC SINH"
-
-                ),
-
-                ft.Column(
-
-                    controls=items,
-
-                    scroll=
-
-                    ft.ScrollMode.AUTO
-
-                ),
-
-                ft.TextButton(
-
-                    "Quay lại",
-
-                    on_click=lambda e:
-
-                    self.show_admin_home()
-
-                )
-
+                self.title("XÓA HỌC SINH"),
+                ft.Column(controls=items, scroll=ft.ScrollMode.AUTO),
+                ft.TextButton("Quay lại", on_click=lambda e: self.show_admin_home())
             ]
-
         )
-
-        self.root.content = self.card(
-
-            body,
-
-            650
-
-        )
-
+        self.root.content = self.card(body, 650)
         self.page.update()
 
     # =========================
     # XÓA HỌC SINH
     # =========================
-
     def delete_student(self, sid):
-
         for student in self.students:
-
             if student.get("id") == sid:
                 self.students.remove(student)
-
                 self.save_data()
-
-                self.show_message(
-
-                    "Đã xóa học sinh"
-
-                )
-
+                self.show_message("Đã xóa học sinh")
                 self.show_manage_student()
-
                 return
 
     # =========================
     # CẬP NHẬT ĐIỂM
     # =========================
-
     def show_update_score(self):
-
         def update(e):
-
             sid = self.edit_student_id.value.strip()
-
-            if not self.check_score(
-
-                    self.edit_score.value
-
-            ):
-                self.show_message(
-
-                    "Điểm không hợp lệ"
-
-                )
-
+            if not self.check_score(self.edit_score.value):
+                self.show_message("Điểm không hợp lệ")
                 return
-
             for student in self.students:
-
                 if student.get("id") == sid:
-                    student["score"] = float(
-
-                        self.edit_score.value
-
-                    )
-
+                    student["score"] = float(self.edit_score.value)
                     self.save_data()
-
-                    self.show_message(
-
-                        "Đã cập nhật điểm"
-
-                    )
-
+                    self.show_message("Đã cập nhật điểm")
                     self.show_admin_home()
-
                     return
-
-            self.show_message(
-
-                "Không tìm thấy học sinh"
-
-            )
+            self.show_message("Không tìm thấy học sinh")
 
         body = ft.Column(
-
             controls=[
-
-                self.title(
-
-                    "CẬP NHẬT ĐIỂM"
-
-                ),
-
+                self.title("CẬP NHẬT ĐIỂM"),
                 self.edit_student_id,
-
                 self.edit_score,
-
-                self.button(
-
-                    "Lưu",
-
-                    update,
-
-                    self.orange
-
-                ),
-
-                ft.TextButton(
-
-                    "Quay lại",
-
-                    on_click=lambda e:
-
-                    self.show_admin_home()
-
-                )
-
+                self.button("Lưu", update, self.orange),
+                ft.TextButton("Quay lại", on_click=lambda e: self.show_admin_home())
             ],
-
-            horizontal_alignment=
-
-            ft.CrossAxisAlignment.CENTER
-
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
-
-        self.root.content = self.card(
-
-            body
-
-        )
-
+        self.root.content = self.card(body)
         self.page.update()
-        # =========================
 
+    # =========================
     # TÌM KIẾM HỌC SINH
     # =========================
-
     def show_search_student(self):
-
-        keyword = ft.TextField(
-
-            label="Nhập tên hoặc mã học sinh",
-
-            filled=True
-
-        )
-
+        keyword = ft.TextField(label="Nhập tên hoặc mã học sinh", filled=True)
         result = ft.Column()
 
         def search(e):
-
             result.controls.clear()
-
             key = keyword.value.lower().strip()
-
             for student in self.students:
-
-                name = student.get(
-
-                    "name",
-
-                    ""
-
-                ).lower()
-
-                sid = student.get(
-
-                    "id",
-
-                    ""
-
-                ).lower()
-
+                name = student.get("name", "").lower()
+                sid = student.get("id", "").lower()
                 if key in name or key in sid:
                     result.controls.append(
-
                         ft.Container(
-
                             bgcolor="white",
-
                             padding=10,
-
                             border_radius=10,
-
                             content=ft.Text(
-
-                                f"{student.get('id')} | "
-
-                                f"{student.get('name')} | "
-
-                                f"Điểm: {student.get('score')}"
-
-                            )
-
+                                f"{student.get('id')} | {student.get('name')} | Điểm: {student.get('score')}")
                         )
-
                     )
-
             if len(result.controls) == 0:
-                result.controls.append(
-
-                    ft.Text(
-
-                        "Không tìm thấy"
-
-                    )
-
-                )
-
+                result.controls.append(ft.Text("Không tìm thấy"))
             self.page.update()
 
         body = ft.Column(
-
             controls=[
-
-                self.title(
-
-                    "TÌM KIẾM HỌC SINH"
-
-                ),
-
+                self.title("TÌM KIẾM HỌC SINH"),
                 keyword,
-
-                self.button(
-
-                    "Tìm kiếm",
-
-                    search,
-
-                    self.blue
-
-                ),
-
+                self.button("Tìm kiếm", search, self.blue),
                 result,
-
-                ft.TextButton(
-
-                    "Quay lại",
-
-                    on_click=lambda e:
-
-                    self.show_admin_home()
-
-                )
-
+                ft.TextButton("Quay lại", on_click=lambda e: self.show_admin_home())
             ],
-
-            scroll=
-
-            ft.ScrollMode.AUTO
-
+            scroll=ft.ScrollMode.AUTO
         )
-
-        self.root.content = self.card(
-
-            body,
-
-            650
-
-        )
-
+        self.root.content = self.card(body, 650)
         self.page.update()
 
     # =========================
     # TRANG CÁ NHÂN HỌC SINH
     # =========================
-
     def show_student_home(self):
-
         if self.current_user is None:
             self.show_role_select()
             return
-
         student = self.current_user
-
-        # 1. Profile Header Box (Maintains student specific name, class, and ID)
         profile_header = ft.Container(
             width=340,
             padding=12,
@@ -2050,7 +1585,6 @@ class AppController:
                         spacing=10,
                         vertical_alignment=ft.CrossAxisAlignment.CENTER,
                         controls=[
-                            # Profile Avatar image container
                             ft.Container(
                                 width=46,
                                 height=46,
@@ -2063,23 +1597,17 @@ class AppController:
                                     border_radius=23,
                                 )
                             ),
-                            # Name, Role, and ID labels
                             ft.Column(
                                 spacing=1,
                                 controls=[
-                                    ft.Text(
-                                        student.get("name", "") + "-" + student.get("class", ""),
-                                        size=15,
-                                        weight=ft.FontWeight.BOLD,
-                                        color=self.dark
-                                    ),
+                                    ft.Text(student.get("name", "") + "-" + student.get("class", ""), size=15,
+                                            weight=ft.FontWeight.BOLD, color=self.dark),
                                     ft.Text("Học sinh", size=11, color=self.gray),
                                     ft.Text("ID: " + student.get("id", ""), size=11, color=self.gray),
                                 ]
                             )
                         ]
                     ),
-                    # Log-out Mini Button
                     ft.Container(
                         on_click=lambda e: self.show_student_login(),
                         padding=ft.Padding(8, 5, 8, 5),
@@ -2091,7 +1619,6 @@ class AppController:
             )
         )
 
-        # 2. Reusable Card Builder (Using coordinate centering system)
         def feature_card(title, icon_char, color, bg_color, click_handler):
             return ft.Container(
                 width=135,
@@ -2104,54 +1631,43 @@ class AppController:
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     horizontal_alignment=ft.CrossAxisAlignment.START,
                     controls=[
-                        # Clean mini logo circle for visual interest
                         ft.Container(
                             width=32,
                             height=32,
                             border_radius=8,
                             bgcolor=color,
-                            alignment=ft.alignment.Alignment(0, 0),  # Fixed: True mathematical alignment center
+                            alignment=ft.alignment.Alignment(0, 0),
                             content=ft.Text(
-                                icon_char,
-                                size=15,
-                                color="white",
-                                weight=ft.FontWeight.BOLD
+                                icon_char, size=15, color="white", weight=ft.FontWeight.BOLD
                             )
                         ),
-                        # Label text
                         ft.Text(
-                            title,
-                            size=12,
-                            weight=ft.FontWeight.BOLD,
-                            color=self.dark
+                            title, size=12, weight=ft.FontWeight.BOLD, color=self.dark
                         )
                     ]
                 )
             )
 
-        # 3. Swipeable horizontal sliding board mapped with student tool features
         sliding_board = ft.Row(
             controls=[
                 feature_card("Phần việc đăng kí", "📝", self.blue, "#EFF6FF", lambda e: self.show_student_list()),
-                feature_card("Phần việc hoàn thành", "✅", self.green, "#F0FDF4", lambda e: self.show_message("Chức năng 'Phần việc hoàn thành' đang phát triển!")),
-                feature_card("Lỗi vi phạm", "⚠️", self.red, "#FEF2F2", lambda e: self.show_message("Chức năng 'Lỗi vi phạm' đang phát triển!")),
-                feature_card("Tiến trình rèn luyện", "⏳", self.orange, "#FFF7ED", lambda e: self.show_message("Chức năng 'Tiến trình rèn luyện' đang phát triển!")),
+                feature_card("Phần việc hoàn thành", "✅", self.green, "#F0FDF4",
+                             lambda e: self.show_message("Chức năng 'Phần việc hoàn thành' đang phát triển!")),
+                feature_card("Lỗi vi phạm", "⚠️", self.red, "#FEF2F2",
+                             lambda e: self.show_message("Chức năng 'Lỗi vi phạm' đang phát triển!")),
+                feature_card("Tiến trình rèn luyện", "⏳", self.orange, "#FFF7ED",
+                             lambda e: self.show_message("Chức năng 'Tiến trình rèn luyện' đang phát triển!")),
             ],
-            scroll=ft.ScrollMode.AUTO,  # Enables safe horizontal swiping/scrolling on mobile screens
+            scroll=ft.ScrollMode.AUTO,
             spacing=10
         )
 
-        # 4. Compile mobile view elements into the master layout column
         dashboard_content = ft.Column(
             controls=[
                 self.title("TRANG CÁ NHÂN"),
                 ft.Container(height=5),
-
-                # Render Profile Info Card
                 profile_header,
                 ft.Container(height=15),
-
-                # Sliding Board Carousel Title - Set to "Tính năng"
                 ft.Row(
                     controls=[
                         ft.Text("Tính năng", size=14, weight=ft.FontWeight.BOLD, color=self.dark),
@@ -2160,12 +1676,8 @@ class AppController:
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN
                 ),
                 ft.Container(height=5),
-
-                # Render the sliding board carousel
                 sliding_board,
                 ft.Container(height=15),
-
-                # Minimalist System Status Info card
                 ft.Container(
                     width=340,
                     padding=12,
@@ -2189,52 +1701,19 @@ class AppController:
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
 
-        # Output centered on clean, beautiful mobile widths (380px)
         self.root.content = self.card(dashboard_content, 380)
         self.page.update()
 
     # =========================
     # LÀM MỚI DỮ LIỆU
     # =========================
-
     def refresh(self):
-
         self.load_data()
-
         self.check_data()
-
         if self.current_user:
-
             if self.current_user.get("role") == "admin":
-
                 self.show_admin_home()
-
-
-
-
             else:
-
                 self.show_student_home()
-
-
-
-
-
-
         else:
-
             self.show_role_select()
-
-    # =========================
-    # KHỞI ĐỘNG LẠI
-    # =========================
-
-    def restart(self):
-
-        self.current_user = None
-
-        self.load_data()
-
-        self.check_data()
-
-        self.show_role_select()

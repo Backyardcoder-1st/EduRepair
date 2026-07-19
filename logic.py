@@ -166,6 +166,7 @@ class AppController:
         self.student_login_password = ft.TextField(
 
             label="Mật khẩu",
+
             can_reveal_password=True,
 
             password=True,
@@ -415,7 +416,7 @@ class AppController:
 
                     "name": "Nguyễn Văn A",
 
-                    "class": "11A1",
+                    "class": "A1",
 
                     "password": "123456",
 
@@ -433,7 +434,7 @@ class AppController:
 
                     "name": "Trần Thị B",
 
-                    "class": "11A1",
+                    "class": "A1",
 
                     "password": "123456",
 
@@ -602,21 +603,19 @@ class AppController:
     # =========================
 
     def check_data(self):
-
         if self.students is None:
             self.students = []
 
-        if not isinstance(
+        if not isinstance(self.students, list):
+            if isinstance(self.students, dict):
+                self.students = list(self.students.values())
+            else:
+                self.students = []
 
-                self.students,
-
-                list
-
-        ):
-            self.students = []
+        # CLEANUP HOLES: Filter out any None or non-dictionary entries to prevent app crashes
+        self.students = [student for student in self.students if isinstance(student, dict)]
 
         for student in self.students:
-
             if "role" not in student:
                 student["role"] = "student"
 
@@ -1115,9 +1114,7 @@ class AppController:
                 self.show_message(
                     "Đã cập nhật ảnh"
                 )
-
                 self.show_student_home()
-
                 return
 
     # =========================
@@ -1254,10 +1251,13 @@ class AppController:
         self.root.content = self.card(dashboard_content, 380)
         self.page.update()
 
-    # =========================
-    # DANH SÁCH LỚP HỌC (INNER VIEW)
-    # =========================
+        # =========================
+        # TRANG XEM LỚP HỌC (ADMIN)
+        # =========================
     def show_admin_classes(self):
+        self.load_data()  # Forces a live update from database whenever viewed
+        self.check_data()
+
         top_bar = ft.Row(
             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -1281,12 +1281,11 @@ class AppController:
 
         class_buttons = []
         classes = [f"A{i}" for i in range(1, 11)]
-
         for c in classes:
             class_buttons.append(
                 ft.Container(
                     content=ft.Text(c, weight=ft.FontWeight.BOLD, color="#7C3AED", size=14),
-                    alignment="center",
+                    alignment=ft.alignment.Alignment(0, 0),  # ✅ FIXED: Explicitly center align safely
                     width=160,
                     height=52,
                     bgcolor="#F3E8FF",
@@ -1317,98 +1316,123 @@ class AppController:
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
-
         self.root.content = self.card(body, 380)
         self.page.update()
 
-    # =========================
-    # DANH SÁCH HỌC SINH (UPDATED SMART FILTER)
-    # =========================
+        # =========================
+        # DANH SÁCH HỌC SINH
+        # =========================
     def show_student_list(self, class_filter=None):
-        rows = []
+            self.load_data()  # Pull absolute latest entries from the database first
+            self.check_data()
 
-        header = ft.Container(
-            bgcolor=self.blue,
-            padding=10,
-            border_radius=8,
-            content=ft.Row(
-                controls=[
-                    ft.Text("Mã", color="white", width=50, size=12, weight=ft.FontWeight.BOLD),
-                    ft.Text("Họ tên", color="white", expand=True, size=12, weight=ft.FontWeight.BOLD),
-                    ft.Text("Lớp", color="white", width=50, size=12, weight=ft.FontWeight.BOLD),
-                    ft.Text("Điểm", color="white", width=40, size=12, weight=ft.FontWeight.BOLD)
-                ]
+            rows = []
+            header = ft.Container(
+                bgcolor=self.blue,
+                padding=10,
+                border_radius=8,
+                content=ft.Row(
+                    controls=[
+                        ft.Text("Mã", color="white", width=50, size=12, weight=ft.FontWeight.BOLD),
+                        ft.Text("Họ tên", color="white", expand=True, size=12, weight=ft.FontWeight.BOLD),
+                        ft.Text("Lớp", color="white", width=50, size=12, weight=ft.FontWeight.BOLD),
+                        ft.Text("Điểm", color="white", width=40, size=12, weight=ft.FontWeight.BOLD)
+                    ]
+                )
             )
-        )
-        rows.append(header)
+            rows.append(header)
 
-        for student in self.students:
-            if student.get("role") != "student":
-                continue
+            for student in self.students:
+                if student.get("role") != "student":
+                    continue
 
-            if class_filter and (class_filter != student.get("class") and class_filter not in student.get("class", "")):
-                continue
+                # 1. Extract class name, strip whitespace, and lowercase it
+                student_class_str = str(student.get("class", "")).strip().lower()
 
-            score = student.get("score", 0)
-            rows.append(
-                ft.Container(
-                    bgcolor="white",
-                    padding=10,
-                    border_radius=8,
-                    content=ft.Row(
-                        controls=[
-                            ft.Text(student.get("id", ""), width=50, size=12),
-                            ft.Text(student.get("name", ""), expand=True, size=12, max_lines=1),
-                            ft.Text(student.get("class", ""), width=50, size=12),
-                            ft.Text(str(score), width=40, size=12)
-                        ]
+                # 2. If a filter exists (e.g., "A1"), normalize it to lowercase
+                if class_filter:
+                    normalized_filter = str(class_filter).strip().lower()
+
+                    # 3. Flexible substring check (matches 'A1', '11A1', etc.)
+                    if normalized_filter not in student_class_str:
+                        continue
+
+                score = student.get("score", 0)
+                rows.append(
+                    ft.Container(
+                        bgcolor="white",
+                        padding=10,
+                        border_radius=8,
+                        content=ft.Row(
+                            controls=[
+                                ft.Text(student.get("id", ""), width=50, size=12, color=self.dark),
+                                ft.Text(student.get("name", ""), expand=True, size=12, max_lines=1, color=self.dark),
+                                ft.Text(student.get("class", ""), width=50, size=12, color=self.dark),
+                                ft.Text(str(score), width=40, size=12, color=self.dark)
+                            ]
+                        )
                     )
                 )
+
+            # Clear Empty-State Handler: If zero students matched, show ONLY the main message
+            if len(rows) == 1:  # Only the header is present, meaning 0 students found
+                rows.append(
+                    ft.Container(
+                        padding=20,
+                        alignment=ft.alignment.Alignment(0, 0),
+                        content=ft.Column(
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                            controls=[
+                                ft.Text("Chưa có học sinh nào trong lớp này", size=13, color=self.gray,
+                                        weight=ft.FontWeight.W_500)
+                                # ✅ REMOVED: "Hãy thử đăng ký tài khoản học sinh mới!" text block
+                            ]
+                        )
+                    )
+                )
+
+            display_title = f"LỚP {class_filter}" if class_filter else "DANH SÁCH ĐĂNG KÝ"
+
+            top_bar = ft.Row(
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                controls=[
+                    ft.Column(
+                        spacing=1,
+                        controls=[
+                            ft.Text(display_title, size=15, weight=ft.FontWeight.BOLD, color=self.dark)
+                            # ✅ REMOVED: The entire student counting text block subtitle line
+                        ]
+                    ),
+                    ft.Container(
+                        on_click=lambda e: self.show_admin_classes() if class_filter else (
+                            self.show_admin_home() if self.current_user.get(
+                                "role") == "admin" else self.show_student_home()),
+                        padding=ft.Padding(10, 6, 10, 6),
+                        border_radius=8,
+                        bgcolor="#E2E8F0",
+                        content=ft.Text("Quay lại", size=11, color=self.dark, weight=ft.FontWeight.BOLD)
+                    )
+                ]
             )
 
-        display_title = f"LỚP {class_filter}" if class_filter else "DANH SÁCH ĐĂNG KÝ"
-        display_sub = f"Danh sách học sinh lớp {class_filter}" if class_filter else "Quản lý lao động"
+            body = ft.Column(
+                spacing=15,
+                controls=[
+                    top_bar,
+                    ft.Container(
+                        content=ft.Column(
+                            controls=rows,
+                            scroll=ft.ScrollMode.AUTO,
+                            spacing=8
+                        ),
+                        height=380,
+                    )
+                ]
+            )
 
-        top_bar = ft.Row(
-            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-            controls=[
-                ft.Column(
-                    spacing=1,
-                    controls=[
-                        ft.Text(display_title, size=15, weight=ft.FontWeight.BOLD, color=self.dark),
-                        ft.Text(display_sub, size=11, color=self.gray)
-                    ]
-                ),
-                ft.Container(
-                    on_click=lambda e: self.show_admin_classes() if class_filter else (
-                        self.show_admin_home() if self.current_user.get(
-                            "role") == "admin" else self.show_student_home()),
-                    padding=ft.Padding(10, 6, 10, 6),
-                    border_radius=8,
-                    bgcolor="#E2E8F0",
-                    content=ft.Text("Quay lại", size=11, color=self.dark, weight=ft.FontWeight.BOLD)
-                )
-            ]
-        )
-
-        body = ft.Column(
-            spacing=15,
-            controls=[
-                top_bar,
-                ft.Container(
-                    content=ft.Column(
-                        controls=rows,
-                        scroll=ft.ScrollMode.AUTO,
-                        spacing=8
-                    ),
-                    height=380,
-                )
-            ]
-        )
-
-        self.root.content = self.card(body, 380)
-        self.page.update()
+            self.root.content = self.card(body, 380)
+            self.page.update()
 
     # =========================
     # THÊM HỌC SINH
@@ -1433,287 +1457,517 @@ class AppController:
             self.students.append(student)
             self.save_data()
             self.show_message("Thêm học sinh thành công")
-            self.show_student_list()
 
-        body = ft.Column(
-            controls=[
-                self.title("THÊM HỌC SINH"),
-                self.new_id,
-                self.new_name,
-                self.new_score,
-                self.button("Thêm", add, self.green),
-                ft.TextButton("Quay lại", on_click=lambda e: self.show_admin_home())
-            ],
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER
-        )
-        self.root.content = self.card(body)
-        self.page.update()
+            self.clear_all_form()  # FIX: Clear inputs so they don't linger on screen
+            self.show_student_list()
 
     # =========================
     # QUẢN LÝ XÓA HỌC SINH
     # =========================
+
     def show_manage_student(self):
+
         items = []
+
         for student in self.students:
+
             if student.get("role") != "student":
                 continue
+
             items.append(
+
                 ft.Container(
+
                     bgcolor="white",
+
                     padding=10,
+
                     border_radius=10,
+
                     content=ft.Row(
+
                         controls=[
+
                             ft.Text(student.get("id") + " - " + student.get("name"), expand=True),
+
                             ft.ElevatedButton("Xóa", bgcolor=self.red, color="white",
                                               on_click=lambda e, sid=student.get("id"): self.delete_student(sid))
+
                         ]
+
                     )
+
                 )
+
             )
+
         body = ft.Column(
+
             controls=[
+
                 self.title("XÓA HỌC SINH"),
+
                 ft.Column(controls=items, scroll=ft.ScrollMode.AUTO),
+
                 ft.TextButton("Quay lại", on_click=lambda e: self.show_admin_home())
+
             ]
+
         )
+
         self.root.content = self.card(body, 650)
+
         self.page.update()
 
     # =========================
     # XÓA HỌC SINH
     # =========================
+
     def delete_student(self, sid):
-        for student in self.students:
-            if student.get("id") == sid:
-                self.students.remove(student)
-                self.save_data()
-                self.show_message("Đã xóa học sinh")
-                self.show_manage_student()
-                return
+        # 1. Use list comprehension to safely filter out the student without loop issues
+        self.students = [student for student in self.students if student.get("id") != sid]
+
+        # 2. Persist changes to both local storage and Firebase
+        self.save_data()
+
+        # 3. Notify the user
+        self.show_message("Đã xóa học sinh thành công")
+
+        # 4. Refresh the UI immediately so the student disappears from the screen
+        self.show_manage_student()
 
     # =========================
     # CẬP NHẬT ĐIỂM
     # =========================
+
     def show_update_score(self):
+
         def update(e):
+
             sid = self.edit_student_id.value.strip()
+
             if not self.check_score(self.edit_score.value):
                 self.show_message("Điểm không hợp lệ")
+
                 return
+
             for student in self.students:
+
                 if student.get("id") == sid:
                     student["score"] = float(self.edit_score.value)
+
                     self.save_data()
+
                     self.show_message("Đã cập nhật điểm")
+
                     self.show_admin_home()
+
                     return
+
             self.show_message("Không tìm thấy học sinh")
 
         body = ft.Column(
+
             controls=[
+
                 self.title("CẬP NHẬT ĐIỂM"),
+
                 self.edit_student_id,
+
                 self.edit_score,
+
                 self.button("Lưu", update, self.orange),
+
                 ft.TextButton("Quay lại", on_click=lambda e: self.show_admin_home())
+
             ],
+
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
+
         )
+
         self.root.content = self.card(body)
+
         self.page.update()
 
     # =========================
     # TÌM KIẾM HỌC SINH
     # =========================
+
     def show_search_student(self):
+
         keyword = ft.TextField(label="Nhập tên hoặc mã học sinh", filled=True)
+
         result = ft.Column()
 
         def search(e):
+
             result.controls.clear()
+
             key = keyword.value.lower().strip()
+
             for student in self.students:
+
                 name = student.get("name", "").lower()
+
                 sid = student.get("id", "").lower()
+
                 if key in name or key in sid:
                     result.controls.append(
+
                         ft.Container(
+
                             bgcolor="white",
+
                             padding=10,
+
                             border_radius=10,
+
                             content=ft.Text(
                                 f"{student.get('id')} | {student.get('name')} | Điểm: {student.get('score')}")
+
                         )
+
                     )
+
             if len(result.controls) == 0:
                 result.controls.append(ft.Text("Không tìm thấy"))
+
             self.page.update()
 
         body = ft.Column(
+
             controls=[
+
                 self.title("TÌM KIẾM HỌC SINH"),
+
                 keyword,
+
                 self.button("Tìm kiếm", search, self.blue),
+
                 result,
+
                 ft.TextButton("Quay lại", on_click=lambda e: self.show_admin_home())
+
             ],
+
             scroll=ft.ScrollMode.AUTO
+
         )
+
         self.root.content = self.card(body, 650)
+
         self.page.update()
 
-    # =========================
-    # TRANG CÁ NHÂN HỌC SINH
-    # =========================
+        # =========================
+        # TRANG CÁ NHÂN HỌC SINH
+        # =========================
+
+        # =========================
+        # TRANG CÁ NHÂN HỌC SINH
+        # =========================
+
     def show_student_home(self):
-        if self.current_user is None:
-            self.show_role_select()
-            return
-        student = self.current_user
-        profile_header = ft.Container(
-            width=340,
-            padding=12,
-            bgcolor="#F8FAFC",
-            border_radius=15,
-            content=ft.Row(
-                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                controls=[
-                    ft.Row(
-                        spacing=10,
-                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                        controls=[
-                            ft.Container(
-                                width=46,
-                                height=46,
-                                border_radius=23,
-                                content=ft.Image(
-                                    src="STUDENT.png",
-                                    fit="cover",
-                                    width=46,
-                                    height=46,
-                                    border_radius=23,
-                                )
-                            ),
-                            ft.Column(
-                                spacing=1,
-                                controls=[
-                                    ft.Text(student.get("name", "") + "-" + student.get("class", ""), size=15,
-                                            weight=ft.FontWeight.BOLD, color=self.dark),
-                                    ft.Text("Học sinh", size=11, color=self.gray),
-                                    ft.Text("ID: " + student.get("id", ""), size=11, color=self.gray),
-                                ]
-                            )
-                        ]
-                    ),
-                    ft.Container(
-                        on_click=lambda e: self.show_student_login(),
-                        padding=ft.Padding(8, 5, 8, 5),
-                        border_radius=8,
-                        bgcolor="#FEE2E2",
-                        content=ft.Text("Đăng xuất", size=11, color=self.red, weight=ft.FontWeight.BOLD)
-                    )
-                ]
-            )
-        )
 
-        def feature_card(title, icon_char, color, bg_color, click_handler):
-            return ft.Container(
-                width=135,
-                height=130,
-                bgcolor=bg_color,
-                border_radius=15,
+            if self.current_user is None:
+                self.show_role_select()
+
+                return
+
+            student = self.current_user
+
+            profile_header = ft.Container(
+
+                width=340,
+
                 padding=12,
-                on_click=click_handler,
-                content=ft.Column(
+
+                bgcolor="#F8FAFC",
+
+                border_radius=15,
+
+                content=ft.Row(
+
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                    horizontal_alignment=ft.CrossAxisAlignment.START,
+
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+
                     controls=[
-                        ft.Container(
-                            width=32,
-                            height=32,
-                            border_radius=8,
-                            bgcolor=color,
-                            alignment=ft.alignment.Alignment(0, 0),
-                            content=ft.Text(
-                                icon_char, size=15, color="white", weight=ft.FontWeight.BOLD
-                            )
+
+                        ft.Row(
+
+                            spacing=10,
+
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+
+                            controls=[
+
+                                ft.Container(
+
+                                    width=46,
+
+                                    height=46,
+
+                                    border_radius=23,
+
+                                    content=ft.Image(
+
+                                        src="STUDENT.png",
+
+                                        fit="cover",
+
+                                        width=46,
+
+                                        height=46,
+
+                                        border_radius=23,
+
+                                    )
+
+                                ),
+
+                                ft.Column(
+
+                                    spacing=1,
+
+                                    controls=[
+
+                                        ft.Text(student.get("name", ""), size=15, weight=ft.FontWeight.BOLD,
+                                                color=self.dark),
+
+                                        ft.Text("Học sinh", size=11, color=self.gray),
+
+                                        ft.Text(f"ID: {student.get('id', '')}", size=11, color=self.gray),
+
+                                    ]
+
+                                )
+
+                            ]
+
                         ),
-                        ft.Text(
-                            title, size=12, weight=ft.FontWeight.BOLD, color=self.dark
+
+                        ft.Container(
+
+                            on_click=lambda e: self.show_role_select(),
+
+                            padding=ft.Padding(8, 5, 8, 5),
+
+                            border_radius=8,
+
+                            bgcolor="#FEE2E2",
+
+                            content=ft.Text("Đăng xuất", size=11, color=self.red, weight=ft.FontWeight.BOLD)
+
                         )
+
                     ]
+
                 )
+
             )
 
-        sliding_board = ft.Row(
-            controls=[
-                feature_card("Phần việc đăng kí", "📝", self.blue, "#EFF6FF", lambda e: self.show_student_list()),
-                feature_card("Phần việc hoàn thành", "✅", self.green, "#F0FDF4",
-                             lambda e: self.show_message("Chức năng 'Phần việc hoàn thành' đang phát triển!")),
-                feature_card("Lỗi vi phạm", "⚠️", self.red, "#FEF2F2",
-                             lambda e: self.show_message("Chức năng 'Lỗi vi phạm' đang phát triển!")),
-                feature_card("Tiến trình rèn luyện", "⏳", self.orange, "#FFF7ED",
-                             lambda e: self.show_message("Chức năng 'Tiến trình rèn luyện' đang phát triển!")),
-            ],
-            scroll=ft.ScrollMode.AUTO,
-            spacing=10
-        )
+            def feature_card(title, icon_char, color, bg_color, click_handler):
+                return ft.Container(
 
-        dashboard_content = ft.Column(
-            controls=[
-                self.title("TRANG CÁ NHÂN"),
-                ft.Container(height=5),
-                profile_header,
-                ft.Container(height=15),
-                ft.Row(
-                    controls=[
-                        ft.Text("Tính năng", size=14, weight=ft.FontWeight.BOLD, color=self.dark),
-                        ft.Text("Cuộn ngang ➔", size=10, color=self.gray)
-                    ],
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN
-                ),
-                ft.Container(height=5),
-                sliding_board,
-                ft.Container(height=15),
-                ft.Container(
-                    width=340,
+                    width=135,
+
+                    height=130,
+
+                    bgcolor=bg_color,
+
+                    border_radius=15,
+
                     padding=12,
-                    bgcolor="#F8FAFC",
-                    border_radius=12,
-                    content=ft.Row(
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                        controls=[
-                            ft.Column(
-                                spacing=2,
-                                controls=[
-                                    ft.Text("Tình trạng hệ thống", size=12, weight=ft.FontWeight.BOLD, color=self.dark),
-                                    ft.Text("Đang kết nối cơ sở dữ liệu", size=11, color=self.gray)
-                                ]
-                            ),
-                            ft.Text("Hoạt động", size=10, color=self.green, weight=ft.FontWeight.BOLD)
-                        ]
-                    )
-                )
-            ],
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER
-        )
 
-        self.root.content = self.card(dashboard_content, 380)
-        self.page.update()
+                    on_click=click_handler,
+
+                    content=ft.Column(
+
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+
+                        horizontal_alignment=ft.CrossAxisAlignment.START,
+
+                        controls=[
+
+                            ft.Container(
+
+                                width=32,
+
+                                height=32,
+
+                                border_radius=8,
+
+                                bgcolor=color,
+
+                                alignment=ft.alignment.Alignment(0, 0),
+
+                                content=ft.Text(
+
+                                    icon_char, size=15, color="white", weight=ft.FontWeight.BOLD
+
+                                )
+
+                            ),
+
+                            ft.Text(
+
+                                title, size=12, weight=ft.FontWeight.BOLD, color=self.dark
+
+                            )
+
+                        ]
+
+                    )
+
+                )
+
+            sliding_board = ft.Row(
+
+                controls=[
+
+                    feature_card("Danh sách đăng kí", "📝", self.blue, "#EFF6FF", lambda e: self.show_student_list()),
+
+                    feature_card("Lớp học", "🏫", "#7C3AED", "#F3E8FF",
+                                 lambda e: self.show_student_list(class_filter=student.get("class", ""))),
+
+                    feature_card("Lỗi vi phạm", "⚠️", self.red, "#FEF2F2",
+
+                                 lambda e: self.show_message("Chức năng 'Lỗi vi phạm' đang phát triển!")),
+
+                    feature_card("Tiến trình lao động", "⏳", self.orange, "#FFF7ED",
+
+                                 lambda e: self.show_message("Chức năng 'Tiến trình' đang phát triển!")),
+
+                    feature_card("Kết quả lao động", "✅", self.green, "#F0FDF4",
+
+                                 lambda e: self.show_message("Chức năng 'Kết quả' đang phát triển!")),
+
+                ],
+
+                scroll=ft.ScrollMode.AUTO,
+
+                spacing=10
+
+            )
+
+            dashboard_content = ft.Column(
+
+                controls=[
+
+                    self.title("BẢNG ĐIỀU KHIỂN"),
+
+                    ft.Container(height=5),
+
+                    profile_header,
+
+                    ft.Container(height=15),
+
+                    ft.Row(
+
+                        controls=[
+
+                            ft.Text("Công cụ quản lý", size=14, weight=ft.FontWeight.BOLD, color=self.dark),
+
+                            ft.Text("Cuộn ngang ➔", size=10, color=self.gray)
+
+                        ],
+
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+
+                    ),
+
+                    ft.Container(height=5),
+
+                    sliding_board,
+
+                    ft.Container(height=15),
+
+                    ft.Container(
+
+                        width=340,
+
+                        padding=12,
+
+                        bgcolor="#F8FAFC",
+
+                        border_radius=12,
+
+                        content=ft.Row(
+
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+
+                            controls=[
+
+                                ft.Column(
+
+                                    spacing=2,
+
+                                    controls=[
+
+                                        ft.Text("Tình trạng hệ thống", size=12, weight=ft.FontWeight.BOLD,
+                                                color=self.dark),
+
+                                        ft.Text("Đang kết nối cơ sở dữ liệu", size=11, color=self.gray)
+
+                                    ]
+
+                                ),
+
+                                ft.Text("Hoạt động", size=10, color=self.green, weight=ft.FontWeight.BOLD)
+
+                            ]
+
+                        )
+
+                    )
+
+                ],
+
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER
+
+            )
+
+            self.root.content = self.card(dashboard_content, 365)
+
+            self.page.update()
 
     # =========================
     # LÀM MỚI DỮ LIỆU
     # =========================
+
     def refresh(self):
+
         self.load_data()
+
         self.check_data()
+
         if self.current_user:
+
             if self.current_user.get("role") == "admin":
+
                 self.show_admin_home()
+
+
+
+
             else:
+
                 self.show_student_home()
+
+
+
+
+
+
         else:
+
             self.show_role_select()
+
+    # =========================
+    # KHỞI ĐỘNG APP
+    # =========================
+
+    def main(self):
+
+        self.start()

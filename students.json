@@ -54,10 +54,37 @@
         "score": 0
     },
     {
-        "id": "HS07",
-        "name": "1",
         "class": "A2",
+        "id": "HS07",
+        "image": "",
+        "name": "1",
         "password": "1",
+        "role": "student",
+        "score": 0
+    },
+    {
+        "class": "A1",
+        "id": "HS08",
+        "image": "",
+        "name": "DINO",
+        "password": "0925524289",
+        "role": "student",
+        "score": 0
+    },
+    {
+        "class": "11A1",
+        "id": "TEST01",
+        "image": "",
+        "name": "Học Sinh Thử Nghiệm",
+        "password": "123",
+        "role": "student",
+        "score": 10
+    },
+    {
+        "id": "HS01",
+        "name": "test3",
+        "class": "A10",
+        "password": "test3",
         "score": 0,
         "role": "student",
         "image": ""

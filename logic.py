@@ -286,6 +286,10 @@ class AppController:
             filled=True
 
         )
+        self.work_image_path = ft.TextField(
+            label="Đường dẫn ảnh gửi giáo viên",
+            filled=True
+        )
 
     # =========================
     # THÔNG BÁO
@@ -555,6 +559,8 @@ class AppController:
 
             if "image" not in student:
                 student["image"] = ""
+            if "work_image" not in student:
+                student["work_image"] = ""
 
     # =========================
     # TẠO ID HỌC SINH
@@ -673,6 +679,8 @@ class AppController:
         self.edit_score.value = ""
 
         self.image_path.value = ""
+
+        self.work_image_path.value = ""
 
         try:
 
@@ -948,7 +956,8 @@ class AppController:
                 "password": self.student_password.value,
                 "score": 0,
                 "role": "student",
-                "image": ""
+                "image": "",
+                "work_image": ""
             }
 
             self.students.append(student)
@@ -1021,7 +1030,7 @@ class AppController:
 
             return ""
 
-    # =========================
+        # =========================
     # LƯU ẢNH HỌC SINH
     # =========================
     def save_student_image(self):
@@ -1032,37 +1041,67 @@ class AppController:
         path = self.image_path.value.strip()
 
         if path == "":
-            self.show_message(
-                "Chưa nhập đường dẫn ảnh"
-            )
-
+            self.show_message("Chưa nhập đường dẫn ảnh")
             return
 
         image = self.read_image(path)
 
         if image == "":
-            self.show_message(
-                "Không đọc được ảnh"
-            )
-
+            self.show_message("Không đọc được ảnh")
             return
 
         for student in self.students:
 
             if student.get("id") == self.current_user.get("id"):
+
                 student["image"] = image
 
                 self.current_user = student
 
-                self.save_data()
+                break
 
-                self.show_message(
-                    "Đã cập nhật ảnh"
-                )
+        self.save_data()
 
-                self.show_student_home()
+        self.show_message("Đã cập nhật ảnh")
 
-                return
+        self.show_student_home()
+
+
+    # =========================
+    # GỬI ẢNH LAO ĐỘNG
+    # =========================
+    def send_work_image(self):
+
+        if self.current_user is None:
+            return
+
+        path = self.work_image_path.value.strip()
+
+        if path == "":
+            self.show_message("Chưa nhập đường dẫn ảnh")
+            return
+
+        image = self.read_image(path)
+
+        if image == "":
+            self.show_message("Không đọc được ảnh")
+            return
+
+        for student in self.students:
+
+            if student.get("id") == self.current_user.get("id"):
+
+                student["work_image"] = image
+
+                self.current_user = student
+
+                break
+
+        self.save_data()
+
+        self.show_message("Đã gửi ảnh cho Admin")
+
+        self.show_student_home()
 
     # =========================
     # TRANG ADMIN DASHBOARD
@@ -1155,6 +1194,7 @@ class AppController:
                 feature_card("Lỗi vi phạm", "⚠️", self.red, "#FEF2F2", lambda e: self.show_message("Chức năng 'Lỗi vi phạm' đang phát triển!")),
                 feature_card("Tiến trình lao động", "⏳", self.orange, "#FFF7ED", lambda e: self.show_message("Chức năng 'Tiến trình' đang phát triển!")),
                 feature_card("Kết quả lao động", "✅", self.green, "#F0FDF4", lambda e: self.show_message("Chức năng 'Kết quả' đang phát triển!")),
+                feature_card("Ảnh học sinh gửi", "📷", self.green, "#F0FDF4", lambda e: self.show_work_images()),
             ],
             scroll=ft.ScrollMode.AUTO,
             spacing=10
@@ -1193,7 +1233,7 @@ class AppController:
                             ),
                             ft.Text("Hoạt động", size=10, color=self.green, weight=ft.FontWeight.BOLD)
                         ]
-                    )
+                    )              
                 )
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
@@ -1606,142 +1646,210 @@ class AppController:
             self.root.content = self.card(body, 380)
             self.page.update()
 
-    # =========================
-    # TÌM KIẾM HỌC SINH
-    # =========================
-    def show_search_student(self, query=None):
-                    self.load_data()
-                    self.check_data()
+   # =========================
+# TÌM KIẾM HỌC SINH
+# =========================
+def show_search_student(self, query=None):
 
-                    # ----------------------------------------------------
-                    # STATE 1: SEARCH FORM
-                    # ----------------------------------------------------
-                    if not query:
-                        top_bar = ft.Row(
-                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+    self.load_data()
+    self.check_data()
+
+    # ----------------------------------------------------
+    # STATE 1: SEARCH FORM
+    # ----------------------------------------------------
+    if not query:
+
+        top_bar = ft.Row(
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            controls=[
+                ft.Text(
+                    "TÌM KIẾM HỌC SINH",
+                    size=15,
+                    weight=ft.FontWeight.BOLD,
+                    color=self.dark
+                ),
+            ]
+        )
+
+        name_input = ft.TextField(
+            label="Nhập tên học sinh",
+            text_size=12,
+            height=48
+        )
+
+        error_msg = ft.Text(
+            "",
+            color=self.red,
+            size=11,
+            weight=ft.FontWeight.BOLD
+        )
+
+        def process_search(e):
+
+            typed_name = name_input.value.strip()
+
+            if not typed_name:
+                error_msg.value = "Lỗi: Vui lòng nhập tên học sinh!"
+                self.page.update()
+                return
+
+            self.show_search_student(query=typed_name)
+
+
+        form_content = ft.Column(
+            spacing=15,
+            controls=[
+                top_bar,
+                name_input,
+                error_msg,
+                ft.Row(
+                    alignment=ft.MainAxisAlignment.END,
+                    controls=[
+                        ft.TextButton(
+                            "Hủy bỏ",
+                            on_click=lambda e: self.show_admin_home()
+                        ),
+
+                        ft.ElevatedButton(
+                            "Tìm kiếm",
+                            bgcolor=self.blue,
+                            color="white",
+                            on_click=process_search
+                        )
+                    ]
+                )
+            ]
+        )
+
+        self.root.content = self.card(form_content, 380)
+        self.page.update()
+
+
+    # ----------------------------------------------------
+    # STATE 2: SEARCH RESULTS
+    # ----------------------------------------------------
+    else:
+
+        top_bar = ft.Row(
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            controls=[
+                ft.Text(
+                    f"KẾT QUẢ: '{query}'",
+                    size=15,
+                    weight=ft.FontWeight.BOLD,
+                    color=self.dark
+                ),
+
+                ft.Container(
+                    on_click=lambda e: self.show_search_student(),
+                    padding=ft.Padding(10,6,10,6),
+                    border_radius=8,
+                    bgcolor="#E2E8F0",
+                    content=ft.Text(
+                        "Quay lại",
+                        size=11,
+                        color=self.dark,
+                        weight=ft.FontWeight.BOLD
+                    )
+                )
+            ]
+        )
+
+
+        rows = []
+
+        search_str = query.strip().lower()
+
+
+        found_students = []
+
+        for student in self.students:
+
+            if student.get("role") != "student":
+                continue
+
+            db_name = str(
+                student.get("name","")
+            ).strip().lower()
+
+            if search_str in db_name:
+                found_students.append(student)
+
+
+
+        if not found_students:
+
+            rows.append(
+                ft.Container(
+                    padding=20,
+                    alignment=ft.alignment.Alignment(0,0),
+                    content=ft.Text(
+                        "Không có học sinh giống với thông tin tìm kiếm",
+                        size=12,
+                        color=self.gray
+                    )
+                )
+            )
+
+
+        else:
+
+            for student in found_students:
+
+                rows.append(
+                    ft.Container(
+                        bgcolor="#F8FAFC",
+                        padding=12,
+                        border_radius=8,
+
+                        content=ft.Column(
+                            spacing=2,
+
                             controls=[
-                                ft.Text("TÌM KIẾM HỌC SINH", size=15, weight=ft.FontWeight.BOLD, color=self.dark),
+
+                                ft.Text(
+                                    student.get("name",""),
+                                    size=14,
+                                    weight=ft.FontWeight.BOLD,
+                                    color=self.dark
+                                ),
+
+                                ft.Text(
+                                    f"Mã ID: {student.get('id','')} - Lớp {student.get('class','')}",
+                                    size=11,
+                                    color=self.gray
+                                )
+
                             ]
                         )
+                    )
+                )
 
-                        name_input = ft.TextField(label="Nhập tên học sinh", text_size=12, height=48)
-                        error_msg = ft.Text("", color=self.red, size=11, weight=ft.FontWeight.BOLD)
 
-                        def process_search(e):
-                            typed_name = name_input.value.strip()
-                            if not typed_name:
-                                error_msg.value = "Lỗi: Vui lòng nhập tên học sinh!"
-                                self.page.update()
-                                return
-                            # Push to results view with the typed name
-                            self.show_search_student(query=typed_name)
+        results_content = ft.Column(
+            spacing=12,
+            controls=[
 
-                        form_content = ft.Column(
-                            spacing=15,
-                            controls=[
-                                top_bar,
-                                name_input,
-                                error_msg,
-                                ft.Row(
-                                    alignment=ft.MainAxisAlignment.END,
-                                    controls=[
-                                        ft.TextButton(
-                                            "Hủy bỏ",
-                                            on_click=lambda e: self.show_admin_home()
-                                        ),
-                                        ft.ElevatedButton(
-                                            "Tìm kiếm",
-                                            bgcolor=self.blue,
-                                            color="white",
-                                            on_click=process_search
-                                        )
-                                    ]
-                                )
-                            ]
-                        )
-                        self.root.content = self.card(form_content, 380)
-                        self.page.update()
+                top_bar,
 
-                    # ----------------------------------------------------
-                    # STATE 2: SEARCH RESULTS
-                    # ----------------------------------------------------
-                    else:
-                        top_bar = ft.Row(
-                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                            controls=[
-                                ft.Text(f"KẾT QUẢ: '{query}'", size=15, weight=ft.FontWeight.BOLD, color=self.dark),
-                                ft.Container(
-                                    on_click=lambda e: self.show_search_student(),
-                                    padding=ft.Padding(10, 6, 10, 6),
-                                    border_radius=8,
-                                    bgcolor="#E2E8F0",
-                                    content=ft.Text("Quay lại", size=11, color=self.dark, weight=ft.FontWeight.BOLD)
-                                )
-                            ]
-                        )
+                ft.Container(
+                    content=ft.Column(
+                        controls=rows,
+                        scroll=ft.ScrollMode.AUTO
+                    ),
 
-                        rows = []
-                        search_str = query.strip().lower()
+                    height=280
+                )
 
-                        # Filter logic (partial matching so they don't have to type the exact full name)
-                        found_students = []
-                        for student in self.students:
-                            if student.get("role") != "student":
-                                continue
-                            db_name = str(student.get("name", "")).strip().lower()
-                            if search_str in db_name:
-                                found_students.append(student)
+            ]
+        )
 
-                        # Error State: No students found
-                        if not found_students:
-                            rows.append(
-                                ft.Container(
-                                    padding=20,
-                                    alignment=ft.alignment.Alignment(0, 0),
-                                    content=ft.Text("Không có học sinh giống với thông tin tìm kiếm", size=12,
-                                                    color=self.gray)
-                                )
-                            )
-                        # Success State: Map results to specific UI layout
-                        else:
-                            for student in found_students:
-                                rows.append(
-                                    ft.Container(
-                                        bgcolor="#F8FAFC",
-                                        padding=12,
-                                        border_radius=8,
-                                        content=ft.Column(
-                                            spacing=2,
-                                            controls=[
-                                                ft.Row(
-                                                    controls=[
-                                                        ft.Text(student.get("name", ""), size=14,
-                                                                weight=ft.FontWeight.BOLD, color=self.dark),
-                                                        ft.Text(f"- {student.get('class', '')}", size=12,
-                                                                weight=ft.FontWeight.BOLD, color=self.blue),
-                                                    ]
-                                                ),
-                                                ft.Text(f"Mã ID: {student.get('id', '')}", size=11, color=self.gray)
-                                            ]
-                                        )
-                                    )
-                                )
 
-                        results_content = ft.Column(
-                            spacing=12,
-                            controls=[
-                                top_bar,
-                                ft.Container(
-                                    content=ft.Column(controls=rows, scroll=ft.ScrollMode.AUTO, spacing=8),
-                                    height=280,
-                                )
-                            ]
-                        )
+        self.root.content = self.card(results_content,380)
 
-                        self.root.content = self.card(results_content, 380)
-                        self.page.update()
+        self.page.update()
 
     # =========================
     # DANH SÁCH ĐĂNG KÝ
@@ -1829,148 +1937,448 @@ class AppController:
         self.page.update()
 
     # =========================
-    # TRANG HỌC SINH
+    # TRANG GỬI ẢNH LAO ĐỘNG
     # =========================
-    def show_student_home(self):
-        if not self.current_user:
+    def show_send_work_image(self):
+
+        if self.current_user is None:
+
             self.show_role_select()
+
             return
 
-        user_name = self.current_user.get("name", "Học sinh")
-        user_class = self.current_user.get("class", "")
-        user_id = self.current_user.get("id", "")
-        user_score = self.current_user.get("score", 0)
-        user_img = self.current_user.get("image", "")
 
-        img_control = None
-        if user_img and len(user_img) > 100:
-            try:
-                img_control = ft.Image(
-                    src_base64=user_img,
-                    width=60,
-                    height=60,
-                    fit="cover",
-                    border_radius=30
-                )
-            except:
-                img_control = None
-
-        if not img_control:
-            img_control = ft.Container(
-                width=60,
-                height=60,
-                border_radius=30,
-                bgcolor="#E2E8F0",
-                alignment=ft.alignment.Alignment(0, 0),
-                content=ft.Text(
-                    user_name[0].upper() if user_name else "H",
-                    size=24,
-                    weight=ft.FontWeight.BOLD,
-                    color=self.blue
-                )
-            )
-
-        profile_card = ft.Container(
-            width=340,
-            padding=15,
-            bgcolor="#F8FAFC",
-            border_radius=15,
-            content=ft.Column(
-                controls=[
-                    ft.Row(
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                        children=[
-                            ft.Row(
-                                spacing=12,
-                                controls=[
-                                    img_control,
-                                    ft.Column(
-                                        spacing=2,
-                                        controls=[
-                                            ft.Text(user_name, size=15, weight=ft.FontWeight.BOLD, color=self.dark),
-                                            ft.Text(f"Mã ID: {user_id}", size=11, color=self.gray),
-                                            ft.Text(f"Lớp: {user_class}", size=11, color=self.gray)
-                                        ]
-                                    )
-                                ]
-                            ),
-                            ft.Container(
-                                on_click=lambda e: self.show_role_select(),
-                                padding=ft.Padding(8, 5, 8, 5),
-                                border_radius=8,
-                                bgcolor="#FEE2E2",
-                                content=ft.Text("Đăng xuất", size=11, color=self.red, weight=ft.FontWeight.BOLD)
-                            )
-                        ]
-                    )
-                ]
-            )
-        )
-
-        score_card = ft.Container(
-            width=340,
-            padding=15,
-            bgcolor="#EFF6FF",
-            border_radius=15,
-            content=ft.Row(
-                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                controls=[
-                    ft.Column(
-                        spacing=2,
-                        controls=[
-                            ft.Text("Điểm thi đua", size=12, color=self.gray),
-                            ft.Text(str(user_score), size=24, weight=ft.FontWeight.BOLD, color=self.blue)
-                        ]
-                    ),
-                    ft.Text("Tốt", size=14, weight=ft.FontWeight.BOLD, color=self.green)
-                ]
-            )
-        )
-
-        dashboard_content = ft.Column(
+        body = ft.Column(
             controls=[
-                self.title("TRANG CÁ NHÂN"),
-                ft.Container(height=5),
-                profile_card,
-                ft.Container(height=10),
-                score_card,
-                ft.Container(height=10),
-                ft.Container(
-                    width=340,
-                    padding=12,
-                    bgcolor="#F8FAFC",
-                    border_radius=12,
-                    content=ft.Row(
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                        controls=[
-                            ft.Column(
-                                spacing=2,
-                                controls=[
-                                    ft.Text("Tình trạng hệ thống", size=12, weight=ft.FontWeight.BOLD, color=self.dark),
-                                    ft.Text("Đang kết nối cơ sở dữ liệu", size=11, color=self.gray)
-                                ]
-                            ),
-                            ft.Text("Hoạt động", size=10, color=self.green, weight=ft.FontWeight.BOLD)
-                        ]
-                    )
+
+                self.title(
+                    "GỬI ẢNH LAO ĐỘNG"
+                ),
+
+
+                self.work_image_path,
+
+
+                self.button(
+                    "Gửi ảnh",
+                    lambda e: self.send_work_image(),
+                    self.green
+                ),
+
+
+                ft.TextButton(
+                    "Quay lại",
+                    on_click=lambda e: self.show_student_home()
                 )
+
             ],
+
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
 
-        self.root.content = self.card(dashboard_content, 365)
+
+        self.root.content = self.card(
+            body,
+            380
+        )
+
+
         self.page.update()
+
+# =========================
+# TRANG HỌC SINH
+# =========================
+    def show_student_home(self):
+
+        if not self.current_user:
+
+            self.show_role_select()
+
+            return
+
+
+    user_name = self.current_user.get("name", "Học sinh")
+    user_class = self.current_user.get("class", "")
+    user_id = self.current_user.get("id", "")
+    user_score = self.current_user.get("score", 0)
+    user_img = self.current_user.get("image", "")
+
+
+    img_control = None
+
+
+    if user_img and len(user_img) > 100:
+
+        try:
+
+            img_control = ft.Image(
+                src_base64=user_img,
+                width=60,
+                height=60,
+                fit="cover",
+                border_radius=30
+            )
+
+        except:
+
+            img_control = None
+
+
+    if not img_control:
+
+        img_control = ft.Container(
+            width=60,
+            height=60,
+            border_radius=30,
+            bgcolor="#E2E8F0",
+            alignment=ft.alignment.Alignment(0, 0),
+            content=ft.Text(
+                user_name[0].upper() if user_name else "H",
+                size=24,
+                weight=ft.FontWeight.BOLD,
+                color=self.blue
+            )
+        )
+
+
+    profile_card = ft.Container(
+        width=340,
+        padding=15,
+        bgcolor="#F8FAFC",
+        border_radius=15,
+
+        content=ft.Row(
+
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+
+            controls=[
+
+                ft.Row(
+
+                    spacing=12,
+
+                    controls=[
+
+                        img_control,
+
+                        ft.Column(
+
+                            spacing=2,
+
+                            controls=[
+
+                                ft.Text(
+                                    user_name,
+                                    size=15,
+                                    weight=ft.FontWeight.BOLD,
+                                    color=self.dark
+                                ),
+
+                                ft.Text(
+                                    f"Mã ID: {user_id}",
+                                    size=11,
+                                    color=self.gray
+                                ),
+
+                                ft.Text(
+                                    f"Lớp: {user_class}",
+                                    size=11,
+                                    color=self.gray
+                                )
+
+                            ]
+
+                        )
+
+                    ]
+
+                ),
+
+
+                ft.Container(
+
+                    on_click=lambda e: self.show_role_select(),
+
+                    padding=ft.Padding(8,5,8,5),
+
+                    border_radius=8,
+
+                    bgcolor="#FEE2E2",
+
+                    content=ft.Text(
+                        "Đăng xuất",
+                        size=11,
+                        color=self.red,
+                        weight=ft.FontWeight.BOLD
+                    )
+
+                )
+
+            ]
+
+        )
+
+    )
+
+
+    score_card = ft.Container(
+
+        width=340,
+
+        padding=15,
+
+        bgcolor="#EFF6FF",
+
+        border_radius=15,
+
+
+        content=ft.Row(
+
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+
+            controls=[
+
+
+                ft.Column(
+
+                    spacing=2,
+
+                    controls=[
+
+                        ft.Text(
+                            "Điểm thi đua",
+                            size=12,
+                            color=self.gray
+                        ),
+
+                        ft.Text(
+                            str(user_score),
+                            size=24,
+                            weight=ft.FontWeight.BOLD,
+                            color=self.blue
+                        )
+
+                    ]
+
+                ),
+
+
+                ft.Text(
+                    "Tốt",
+                    size=14,
+                    weight=ft.FontWeight.BOLD,
+                    color=self.green
+                )
+
+            ]
+
+        )
+
+    )
+
+
+    dashboard_content = ft.Column(
+
+        controls=[
+
+            self.title("TRANG CÁ NHÂN"),
+
+
+            ft.Container(height=5),
+
+
+            profile_card,
+
+
+            ft.Container(height=10),
+
+
+            score_card,
+
+
+            ft.Container(height=10),
+
+
+            self.button(
+
+                "Gửi ảnh lao động",
+
+                lambda e: self.show_send_work_image(),
+
+                self.green
+
+            ),
+
+
+            ft.Container(height=10),
+
+
+            ft.Container(
+
+                width=340,
+
+                padding=12,
+
+                bgcolor="#F8FAFC",
+
+                border_radius=12,
+
+
+                content=ft.Row(
+
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+
+
+                    controls=[
+
+
+                        ft.Column(
+
+                            spacing=2,
+
+                            controls=[
+
+                                ft.Text(
+                                    "Tình trạng hệ thống",
+                                    size=12,
+                                    weight=ft.FontWeight.BOLD,
+                                    color=self.dark
+                                ),
+
+                                ft.Text(
+                                    "Đang kết nối cơ sở dữ liệu",
+                                    size=11,
+                                    color=self.gray
+                                )
+
+                            ]
+
+                        ),
+
+
+                        ft.Text(
+                            "Hoạt động",
+                            size=10,
+                            color=self.green,
+                            weight=ft.FontWeight.BOLD
+                        )
+
+                    ]
+
+                )
+
+            )
+
+        ],
+
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER
+
+    )
+
+
+    self.root.content = self.card(
+        dashboard_content,
+        365
+    )
+
+    self.page.update()
+
+    # =========================
+    # XEM ẢNH HỌC SINH GỬI
+    # =========================
+    def show_work_images(self):
+
+        self.load_data()
+        self.check_data()
+
+        rows = []
+
+        for student in self.students:
+
+            if student.get("role") != "student":
+                continue
+
+            image = student.get("work_image", "")
+
+            if image:
+                rows.append(
+                    ft.Container(
+                        padding=10,
+                        bgcolor="#F8FAFC",
+                        border_radius=10,
+                        content=ft.Column(
+                            controls=[
+                                ft.Text(
+                                    student.get("name", ""),
+                                    weight=ft.FontWeight.BOLD
+                                ),
+
+                                ft.Text(
+                                    "Lớp: " + student.get("class", "")
+                                ),
+
+                                ft.Image(
+                                    src_base64=image,
+                                    width=250,
+                                    height=180,
+                                    fit="cover"
+                                )
+                            ]
+                        )
+                    )
+                )
+
+        if not rows:
+            rows.append(
+                ft.Text("Chưa có học sinh gửi ảnh")
+            )
+
+        body = ft.Column(
+            controls=[
+                ft.Text(
+                    "ẢNH HỌC SINH GỬI",
+                    size=18,
+                    weight=ft.FontWeight.BOLD
+                ),
+
+                ft.Column(
+                    controls=rows,
+                    scroll=ft.ScrollMode.AUTO
+                ),
+
+                ft.TextButton(
+                    "Quay lại",
+                    on_click=lambda e: self.show_admin_home()
+                )
+            ],
+
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER
+        )
+
+        self.root.content = self.card(body, 380)
+
+        self.page.update()
+
 
     # =========================
     # LÀM MỚI DỮ LIỆU
     # =========================
     def refresh(self):
+
         self.load_data()
+
         self.check_data()
+
         if self.current_user:
+
             if self.current_user.get("role") == "admin":
+
                 self.show_admin_home()
+
             else:
+
                 self.show_student_home()
+
         else:
+
             self.show_role_select()

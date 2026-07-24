@@ -6,7 +6,8 @@
         "name": "Nguyễn Văn A",
         "password": "123456",
         "role": "student",
-        "score": 8
+        "score": 8,
+        "work_image": ""
     },
     {
         "class": "A1",
@@ -15,7 +16,8 @@
         "name": "Trần Thị B",
         "password": "123456",
         "role": "student",
-        "score": 6
+        "score": 6,
+        "work_image": ""
     },
     {
         "class": "A1",
@@ -24,7 +26,8 @@
         "name": "Đinh Đức Tiến",
         "password": "toansung5533",
         "role": "student",
-        "score": 0
+        "score": 0,
+        "work_image": ""
     },
     {
         "class": "A1",
@@ -33,7 +36,8 @@
         "name": "Test",
         "password": "test",
         "role": "student",
-        "score": 0
+        "score": 0,
+        "work_image": ""
     },
     {
         "class": "A1",
@@ -42,7 +46,8 @@
         "name": "test2",
         "password": "test2",
         "role": "student",
-        "score": 0
+        "score": 0,
+        "work_image": ""
     },
     {
         "class": "A1",
@@ -51,7 +56,8 @@
         "name": "Nguyễn",
         "password": "1",
         "role": "student",
-        "score": 0
+        "score": 0,
+        "work_image": ""
     },
     {
         "class": "A2",
@@ -60,7 +66,16 @@
         "name": "1",
         "password": "1",
         "role": "student",
-        "score": 0
+        "score": 10,
+        "tasks": [
+            {
+                "job": "Nhặt cỏ quanh vườn hoa",
+                "note": "",
+                "status": "completed",
+                "time": "17/8-19/8"
+            }
+        ],
+        "work_image": ""
     },
     {
         "class": "A1",
@@ -69,7 +84,8 @@
         "name": "DINO",
         "password": "0925524289",
         "role": "student",
-        "score": 0
+        "score": 0,
+        "work_image": ""
     },
     {
         "class": "11A1",
@@ -78,15 +94,36 @@
         "name": "Học Sinh Thử Nghiệm",
         "password": "123",
         "role": "student",
-        "score": 10
+        "score": 10,
+        "work_image": ""
     },
     {
-        "id": "HS01",
-        "name": "test3",
         "class": "A10",
+        "id": "HS01",
+        "image": "",
+        "name": "test3",
         "password": "test3",
-        "score": 0,
         "role": "student",
-        "image": ""
+        "score": 0,
+        "work_image": ""
+    },
+    {
+        "class": "A2",
+        "id": "HS08",
+        "image": "",
+        "name": "shiba",
+        "password": "0925524289",
+        "role": "student",
+        "score": 0,
+        "work_image": ""
+    },
+    {
+        "class": "A3",
+        "id": "HS01A3",
+        "image": "",
+        "name": "3",
+        "password": "3",
+        "role": "student",
+        "score": 0
     }
 ]

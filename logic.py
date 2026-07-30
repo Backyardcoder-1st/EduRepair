@@ -5,6 +5,7 @@ import urllib.request
 import urllib.error
 import ssl
 import base64
+import shutil
 
 try:
     _context = ssl.create_default_context()
@@ -72,9 +73,24 @@ class AppController:
 
         self.admin_key = "123"
 
+        # Ensure uploads folder exists
+
+        self.upload_dir = "uploads"
+
+        if not os.path.exists(self.upload_dir):
+
+            os.makedirs(self.upload_dir)
+
+        # FilePicker Setup (Fixed for Flet)
+        self.selected_image_path = None
+        self.file_picker = ft.FilePicker()
+        self.file_picker.on_result = self.on_file_selected  # Assign event handler directly
+        self.page.overlay.append(self.file_picker)
+
         # =========================
         # TẠO CARD GIAO DIỆN
         # =========================
+
 
         def create_card(content, width=500):
             return ft.Container(
@@ -287,6 +303,47 @@ class AppController:
         )
 
     # =========================
+    # LƯU ẢNH VÀO THƯ MỤC LOCAL
+    # =========================
+    def save_uploaded_image(self, src_path, file_name):
+        try:
+            if not os.path.exists("uploads"):
+                os.makedirs("uploads")
+
+            ext = os.path.splitext(file_name)[1]
+            if not ext:
+                ext = ".png"
+
+            user_id = self.current_user.get("id", "user") if self.current_user else "user"
+            new_filename = f"proof_{user_id}_{file_name}"
+            dest_path = os.path.join("uploads", new_filename)
+
+            import shutil
+            shutil.copy(src_path, dest_path)
+            return dest_path
+        except Exception as e:
+            print("Lỗi lưu ảnh:", e)
+            return None
+
+    # =========================
+    # FILE PICKER CALLBACK
+    # =========================
+    def on_file_selected(self, e: ft.FilePickerResultEvent):
+        if e.files and len(e.files) > 0:
+            selected_file = e.files[0]
+            saved_path = self.save_uploaded_image(selected_file.path, selected_file.name)
+            if saved_path:
+                self.selected_image_path = saved_path
+                self.show_message("Đã chọn ảnh minh chứng thành công!")
+                if hasattr(self, "image_preview_text") and self.image_preview_text:
+                    self.image_preview_text.value = f"📷 {os.path.basename(saved_path)}"
+                    self.page.update()
+        else:
+            self.show_message("Chưa chọn ảnh nào.")
+
+
+
+    # =========================
     # THÔNG BÁO
     # =========================
 
@@ -309,121 +366,64 @@ class AppController:
             pass
 
     # =========================
-    # ĐỌC DỮ LIỆU FIREBASE + LOCAL
+    # ĐỌC DỮ LIỆU FIREBASE + LOCAL (FIXED)
     # =========================
 
     def load_data(self):
-        self.students = []
+        loaded = False
         try:
-            request = urllib.request.Request(
-                self.db_url,
-                method="GET"
-            )
-            with urllib.request.urlopen(
-                    request,
-                    timeout=8,
-                    context=_context
-            ) as response:
+            request = urllib.request.Request(self.db_url, method="GET")
+            with urllib.request.urlopen(request, timeout=5, context=_context) as response:
                 data = json.loads(response.read().decode())
                 if isinstance(data, dict):
                     self.students = list(data.values())
+                    loaded = True
                 elif isinstance(data, list):
                     self.students = data
+                    loaded = True
                 print("Firebase load thành công")
         except Exception as e:
             print("Firebase đọc lỗi:", e)
 
-        if len(self.students) == 0:
-            try:
-                if os.path.exists(self.file):
+        # Fallback to local students.json if Firebase failed
+        if not loaded:
+            if os.path.exists(self.file):
+                try:
                     with open(self.file, "r", encoding="utf-8") as f:
-                        self.students = json.load(f)
-                    print("Load file local")
-            except Exception as e:
-                print("Local lỗi:", e)
+                        data = json.load(f)
+                        if isinstance(data, list):
+                            self.students = data
+                            print("Đã load từ local file students.json")
+                except Exception as ex:
+                    print("Lỗi đọc file local:", ex)
+            if not hasattr(self, "students") or self.students is None:
+                self.students = []
 
-        if len(self.students) == 0:
-            self.students = [
-                {
-                    "id": "HS01",
-                    "name": "Nguyễn Văn A",
-                    "class": "A1",
-                    "password": "123456",
-                    "score": 8,
-                    "role": "student",
-                    "image": ""
-                },
-                {
-                    "id": "HS02",
-                    "name": "Trần Thị B",
-                    "class": "A1",
-                    "password": "123456",
-                    "score": 6,
-                    "role": "student",
-                    "image": ""
-                }
-            ]
-            self.save_data()
-
-        # AUTOMATIC DATABASE INJECTION FOR THE TEST STUDENT PROFILE:
-        # If the test account ID "TEST01" does not exist, append it and sync both local .json and firebase
-        has_test_student = any(isinstance(s, dict) and s.get("id") == "TEST01" for s in self.students)
-        if not has_test_student:
-            self.students.append({
-                "id": "TEST01",
-                "name": "Học Sinh Thử Nghiệm",
-                "class": "11A1",
-                "password": "123",
-                "score": 10,
-                "role": "student",
-                "image": ""
-            })
-            self.save_data()  # Forces a persistent write to students.json locally
 
     # =========================
     # LƯU LOCAL
     # =========================
 
     def backup_local(self):
-
         try:
-
             with open(
-
                     self.file,
-
                     "w",
-
                     encoding="utf-8"
-
             ) as f:
-
                 json.dump(
-
                     self.students,
-
                     f,
-
                     ensure_ascii=False,
-
                     indent=4
-
                 )
-
             print(
-
-                "Backup local OK"
-
+              "Backup local OK"
             )
-
         except Exception as e:
-
             print(
-
                 "Backup lỗi:",
-
                 e
-
             )
 
     # =========================
@@ -431,11 +431,8 @@ class AppController:
     # =========================
 
     def sync_firebase(self):
-
         try:
-
             data = json.dumps(
-
                 self.students,
 
                 ensure_ascii=False
@@ -491,6 +488,7 @@ class AppController:
                 "Chỉ lưu local"
             )
 
+
     # =========================
     # START APP
     # =========================
@@ -508,27 +506,17 @@ class AppController:
     # =========================
 
     def check_data(self):
-        if self.students is None:
+        if self.students is None or not isinstance(self.students, list):
             self.students = []
 
-        if not isinstance(self.students, list):
-            if isinstance(self.students, dict):
-                self.students = list(self.students.values())
-            else:
-                self.students = []
-
-        # CLEANUP HOLES: Filter out any None or non-dictionary entries to prevent app crashes
+        # Filter out any corrupt / non-dictionary entries
         self.students = [student for student in self.students if isinstance(student, dict)]
 
         for student in self.students:
-            if "role" not in student:
-                student["role"] = "student"
-
             if "score" not in student:
                 student["score"] = 0
-
-            if "image" not in student:
-                student["image"] = ""
+            if "tasks" not in student or not isinstance(student["tasks"], list):
+                student["tasks"] = []
 
     def generate_student_id(self, class_name):
         if not class_name:
@@ -649,6 +637,28 @@ class AppController:
         except:
 
             pass
+
+    #=========================
+    #File lưu trữ công việc
+    #=========================
+
+    def load_history(self):
+        if not os.path.exists("history.json"):
+            return []
+        try:
+            with open("history.json", "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return []
+
+    def save_history_record(self, record):
+        history = self.load_history()
+        history.append(record)
+        try:
+            with open("history.json", "w", encoding="utf-8") as f:
+                json.dump(history, f, ensure_ascii=False, indent=4)
+        except Exception as e:
+            print(f"Error saving history: {e}")
 
     # =========================
     # MÀN HÌNH CHỌN VAI TRÒ
@@ -910,13 +920,12 @@ class AppController:
                 return
 
             student = {
-                "id": self.generate_student_id(self.student_class.value),
                 "name": self.student_name.value.strip(),
+                "id": self.generate_student_id(self.student_class.value),
                 "class": self.student_class.value,
                 "password": self.student_password.value,
                 "score": 0,
-                "role": "student",
-                "image": ""
+                "tasks": []
             }
 
             self.students.append(student)
@@ -1298,8 +1307,9 @@ class AppController:
             self.page.update()
 
     # =========================
-    # ADMIN: KẾT QUẢ LAO ĐỘNG (NGHIỆM THU CÔNG VIỆC)
+    # ADMIN: NGHIỆM THU LAO ĐỘNG
     # =========================
+
     def show_admin_labor_results(self):
         self.load_data()
         self.check_data()
@@ -1311,8 +1321,8 @@ class AppController:
                 ft.Column(
                     spacing=1,
                     controls=[
-                        ft.Text("KẾT QUẢ LAO ĐỘNG", size=15, weight=ft.FontWeight.BOLD, color=self.dark),
-                        ft.Text("Nghiệm thu báo cáo công việc", size=11, color=self.blue)
+                        ft.Text("NGHIỆM THU LAO ĐỘNG", size=15, weight=ft.FontWeight.BOLD, color=self.dark),
+                        ft.Text("Duyệt hoàn thành & cộng điểm", size=11, color=self.gray)
                     ]
                 ),
                 ft.Container(
@@ -1328,98 +1338,113 @@ class AppController:
         pending_cards = []
 
         def approve_result(student, task):
-            task["status"] = "completed"
-            student["score"] = student.get("score", 0) + 10  # Bonus points
+            student["score"] = student.get("score", 0) + 10
+            if "tasks" in student and isinstance(student["tasks"], list) and task in student["tasks"]:
+                student["tasks"].remove(task)
+
+            history_entry = {
+                "student_id": student.get("id", ""),
+                "student_name": student.get("name", ""),
+                "class": student.get("class", ""),
+                "job": task.get("job", ""),
+                "time": task.get("time", ""),
+                "note": task.get("note", ""),
+                "status": "completed"
+            }
+            self.save_history_record(history_entry)
             self.save_data()
-            self.show_message(f"Đã duyệt hoàn thành (+10 điểm) cho {student.get('name')}")
+            self.show_message(f"Đã duyệt +10đ cho {student.get('name')}")
             self.show_admin_labor_results()
 
         def reject_result(student, task):
-            task["status"] = "incomplete"
+            if "tasks" in student and isinstance(student["tasks"], list) and task in student["tasks"]:
+                student["tasks"].remove(task)
+
+            history_entry = {
+                "student_id": student.get("id", ""),
+                "student_name": student.get("name", ""),
+                "class": student.get("class", ""),
+                "job": task.get("job", ""),
+                "time": task.get("time", ""),
+                "note": task.get("note", ""),
+                "status": "incomplete"
+            }
+            self.save_history_record(history_entry)
             self.save_data()
-            self.show_message(f"Đã đánh giá 'Chưa hoàn thành' cho {student.get('name')}")
+            self.show_message(f"Đã đánh giá chưa đạt cho {student.get('name')}")
             self.show_admin_labor_results()
 
-        for student in self.students:
-            if not isinstance(student, dict) or "tasks" not in student:
-                continue
-
-            tasks = student.get("tasks", [])
-            if not isinstance(tasks, list):
-                continue
-
-            for task in tasks:
-                if not isinstance(task, dict):
+        if isinstance(self.students, list):
+            for student in self.students:
+                if not isinstance(student, dict):
                     continue
-
-                # Strictly only show tasks pending review
-                if task.get("status") == "pending_review":
-                    st_name = student.get("name", "N/A")
-                    st_class = student.get("class", "")
-                    st_id = student.get("id", "")
-
-                    card = ft.Container(
-                        padding=12,
-                        bgcolor="#EFF6FF",
-                        border=ft.Border(
-                            top=ft.BorderSide(1, "#93C5FD"),
-                            bottom=ft.BorderSide(1, "#93C5FD"),
-                            left=ft.BorderSide(1, "#93C5FD"),
-                            right=ft.BorderSide(1, "#93C5FD"),
-                        ),
-                        border_radius=12,
-                        content=ft.Column(
-                            spacing=6,
-                            controls=[
-                                ft.Row(
-                                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                    controls=[
-                                        ft.Text(f"{st_name} ({st_id})", size=12, weight=ft.FontWeight.BOLD,
-                                                        color=self.dark),
-                                        ft.Container(
-                                            padding=ft.Padding(6, 2, 6, 2),
-                                            bgcolor="#DBEAFE",
-                                            border_radius=6,
-                                            content=ft.Text(f"Lớp {st_class}", size=10, color=self.blue,
-                                                            weight=ft.FontWeight.BOLD)
-                                        )
-                                    ]
-                                ),
-                                ft.Text(f"📌 Công việc: {task.get('job', '')}", size=12,
-                                        weight=ft.FontWeight.BOLD, color=self.dark),
-                                ft.Text(f"⏱️ Thời gian: {task.get('time', '')}", size=11, color=self.gray),
-                                ft.Text(f"📝 Ghi chú: {task.get('note', '')}", size=11, color=self.gray),
-                                ft.Container(height=4),
-                                ft.Row(
-                                    controls=[
-                                        ft.ElevatedButton(
-                                            "Duyệt (+10đ)",
-                                            bgcolor=self.green,
-                                            color="white",
-                                            on_click=lambda e, s=student, t=task: approve_result(s, t),
-                                            expand=True
-                                        ),
-                                        ft.ElevatedButton(
-                                            "Chưa đạt",
-                                            bgcolor=self.red,
-                                            color="white",
-                                            on_click=lambda e, s=student, t=task: reject_result(s, t),
-                                            expand=True
-                                        )
-                                    ]
-                                )
-                            ]
+                tasks = student.get("tasks", [])
+                if not isinstance(tasks, list):
+                    continue
+                for task in tasks:
+                    if not isinstance(task, dict):
+                        continue
+                    status = str(task.get("status", "")).strip()
+                    if status in ["pending_review", "chờ nghiệm thu"]:
+                        card = ft.Container(
+                            padding=12,
+                            bgcolor="#F8FAFC",
+                            border=ft.Border(
+                                top=ft.BorderSide(1, "#E2E8F0"),
+                                bottom=ft.BorderSide(1, "#E2E8F0"),
+                                left=ft.BorderSide(1, "#E2E8F0"),
+                                right=ft.BorderSide(1, "#E2E8F0"),
+                            ),
+                            border_radius=10,
+                            content=ft.Column(
+                                spacing=6,
+                                controls=[
+                                    ft.Row(
+                                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                        controls=[
+                                            ft.Text(f"👤 {student.get('name', '')} ({student.get('class', '')})", size=12, weight=ft.FontWeight.BOLD, color=self.dark),
+                                            ft.Text(f"ID: {student.get('id', '')}", size=10, color=self.gray)
+                                        ]
+                                    ),
+                                    ft.Text(f"📌 Phần việc: {task.get('job', '')}", size=11, color=self.dark),
+                                    ft.Text(f"⏱️ Thời gian: {task.get('time', '')}", size=11, color=self.gray),
+                                    ft.Text(f"📝 Báo cáo: {task.get('note', 'Chưa có ghi chú')}", size=11, color=self.gray),
+                                    ft.Row(
+                                        alignment=ft.MainAxisAlignment.END,
+                                        spacing=8,
+                                        controls=[
+                                            ft.Container(
+                                                on_click=lambda e, s=student, t=task: reject_result(s, t),
+                                                padding=ft.Padding(8, 4, 8, 4),
+                                                bgcolor="#FEE2E2",
+                                                border_radius=6,
+                                                content=ft.Text("Chưa đạt", size=10, color=self.red, weight=ft.FontWeight.BOLD)
+                                            ),
+                                            ft.Container(
+                                                on_click=lambda e, s=student, t=task: approve_result(s, t),
+                                                padding=ft.Padding(8, 4, 8, 4),
+                                                bgcolor="#DCFCE7",
+                                                border_radius=6,
+                                                content=ft.Text("Duyệt (+10đ)", size=10, color=self.green, weight=ft.FontWeight.BOLD)
+                                            )
+                                        ]
+                                    )
+                                ]
+                            )
                         )
-                    )
-                    pending_cards.append(card)
+                        pending_cards.append(card)
 
         if not pending_cards:
             pending_cards.append(
                 ft.Container(
                     padding=30,
                     alignment=ft.alignment.Alignment(0, 0),
-                    content=ft.Text("Hiện chưa có báo cáo kết quả nào cần duyệt.", size=12, color=self.gray,
-                                    text_align=ft.TextAlign.CENTER)
+                    content=ft.Text(
+                        "Không có phần việc nào cần nghiệm thu lúc này.",
+                        size=12,
+                        color=self.gray,
+                        text_align=ft.TextAlign.CENTER
+                    )
                 )
             )
 
@@ -1449,8 +1474,9 @@ class AppController:
         self.root.content = card_container
         self.page.update()
 
+
     # =========================
-    # HỌC SINH: PHẦN VIỆC HOÀN THÀNH (LỊCH SỬ)
+    # HỌC SINH: PHẦN VIỆC HOÀN THÀNH
     # =========================
     def show_student_completed_tasks(self):
         self.load_data()
@@ -1460,7 +1486,13 @@ class AppController:
             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
             controls=[
-                ft.Text("LỊCH SỬ PHẦN VIỆC", size=15, weight=ft.FontWeight.BOLD, color=self.dark),
+                ft.Column(
+                    spacing=1,
+                    controls=[
+                        ft.Text("PHẦN VIỆC HOÀN THÀNH", size=15, weight=ft.FontWeight.BOLD, color=self.dark),
+                        ft.Text("Lịch sử rèn luyện & nghiệm thu", size=11, color=self.gray)
+                    ]
+                ),
                 ft.Container(
                     on_click=lambda e: self.show_student_home(),
                     padding=ft.Padding(10, 6, 10, 6),
@@ -1471,69 +1503,78 @@ class AppController:
             ]
         )
 
-        history_cards = []
+        completed_cards = []
 
-        if self.current_user and "tasks" in self.current_user and isinstance(self.current_user["tasks"], list):
-            for task in self.current_user["tasks"]:
-                if not isinstance(task, dict):
-                    continue
+        # Load history records from history.json
+        all_history = self.load_history()
 
-                status = task.get("status")
+        # Filter for the currently logged-in student
+        current_id = self.current_user.get("id") if isinstance(self.current_user, dict) else None
+        student_history = [
+            h for h in all_history
+            if isinstance(h, dict) and h.get("student_id") == current_id
+        ]
 
-                # Check for closed/completed/rejected statuses
-                if status in ["completed", "incomplete", "rejected_registration"]:
-                    if status == "completed":
-                        badge_text = "✅ Đã hoàn thành"
-                        badge_color = self.green
-                        bg_color = "#F0FDF4"
-                    elif status == "incomplete":
-                        badge_text = "❌ Chưa hoàn thành"
-                        badge_color = self.red
-                        bg_color = "#FEF2F2"
-                    else:
-                        badge_text = "⛔ Bị từ chối đăng kí"
-                        badge_color = self.red
-                        bg_color = "#FEF2F2"
+        for task in student_history:
+            status = str(task.get("status", "")).strip()
+            is_done = status in ["completed", "hoàn thành", "Đã hoàn thành"]
 
-                    card_controls = [
+            card_color = "#F0FDF4" if is_done else "#FEF2F2"
+            border_color = "#BBF7D0" if is_done else "#FECACA"
+            badge_bg = "#DCFCE7" if is_done else "#FEE2E2"
+            badge_color = self.green if is_done else self.red
+            badge_text = "✅ Hoàn thành" if is_done else "❌ Chưa đạt"
+
+            card = ft.Container(
+                padding=12,
+                bgcolor=card_color,
+                border=ft.Border(
+                    top=ft.BorderSide(1, border_color),
+                    bottom=ft.BorderSide(1, border_color),
+                    left=ft.BorderSide(1, border_color),
+                    right=ft.BorderSide(1, border_color),
+                ),
+                border_radius=12,
+                content=ft.Column(
+                    spacing=6,
+                    controls=[
                         ft.Row(
                             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                             controls=[
-                                ft.Text(badge_text, size=11, weight=ft.FontWeight.BOLD, color=badge_color),
+                                ft.Text(f"📌 {task.get('job', '')}", size=12, weight=ft.FontWeight.BOLD, color=self.dark),
+                                ft.Container(
+                                    padding=ft.Padding(6, 2, 6, 2),
+                                    bgcolor=badge_bg,
+                                    border_radius=6,
+                                    content=ft.Text(badge_text, size=10, color=badge_color, weight=ft.FontWeight.BOLD)
+                                )
                             ]
                         ),
-                        ft.Text(f"📌 Công việc: {task.get('job', '')}", size=12, weight=ft.FontWeight.BOLD,
-                                color=self.dark),
                         ft.Text(f"⏱️ Thời gian: {task.get('time', '')}", size=11, color=self.gray),
+                        ft.Text(f"📝 Ghi chú: {task.get('note', 'Không có')}", size=11, color=self.gray),
                     ]
+                )
+            )
+            completed_cards.append(card)
 
-                    if status == "rejected_registration" and task.get("reject_reason"):
-                        card_controls.append(
-                            ft.Text(f"💬 Lý do từ chối: {task.get('reject_reason')}", size=11, color=self.red)
-                        )
-
-                    card = ft.Container(
-                        padding=12,
-                        bgcolor=bg_color,
-                        border_radius=12,
-                        content=ft.Column(spacing=6, controls=card_controls)
-                    )
-                    history_cards.append(card)
-
-        if not history_cards:
-            history_cards.append(
+        if not completed_cards:
+            completed_cards.append(
                 ft.Container(
                     padding=30,
                     alignment=ft.alignment.Alignment(0, 0),
-                    content=ft.Text("Chưa có lịch sử phần việc nào.", size=12, color=self.gray,
-                                    text_align=ft.TextAlign.CENTER)
+                    content=ft.Text(
+                        "Chưa có lịch sử phần việc hoàn thành.",
+                        size=12,
+                        color=self.gray,
+                        text_align=ft.TextAlign.CENTER
+                    )
                 )
             )
 
         list_content = ft.Column(
             spacing=10,
             scroll=ft.ScrollMode.AUTO,
-            controls=history_cards
+            controls=completed_cards
         )
 
         body = ft.Column(
@@ -2355,7 +2396,12 @@ class AppController:
         pending_cards = []
 
         def approve_application(student, task):
-            task["status"] = "in_progress"  # Moves to "Tiến trình rèn luyện"
+            # Locate the exact task inside student["tasks"] to ensure the reference updates
+            for t in student.get("tasks", []):
+                if t.get("job") == task.get("job"):
+                    t["status"] = "in_progress"
+                    break
+
             self.save_data()
             self.show_message(f"Đã duyệt phần việc cho học sinh {student.get('name')}")
             self.show_admin_registration_list()
@@ -2815,7 +2861,7 @@ class AppController:
                 if "tasks" not in self.current_user or not isinstance(self.current_user["tasks"], list):
                     self.current_user["tasks"] = []
 
-                # RULE: Check if student already has 1 active task
+                # RULE: Check if student already has an ACTIVE (unfinished) task
                 active_statuses = ["pending_registration", "in_progress", "pending_review", "Chờ xét duyệt",
                                    "Đang rèn luyện"]
                 has_active_task = any(
@@ -2838,6 +2884,15 @@ class AppController:
                 }
 
                 self.current_user["tasks"].append(new_task)
+
+                # --- SYNC FIX START ---
+                # Ensure the change in self.current_user is reflected in self.students before saving
+                for s in self.students:
+                    if isinstance(s, dict) and s.get("id") == self.current_user.get("id"):
+                        s["tasks"] = self.current_user["tasks"]
+                        break
+                # --- SYNC FIX END ---
+
                 self.save_data()
 
                 status_text.value = "Đã gửi đăng kí thành công! Đang chờ Admin duyệt."

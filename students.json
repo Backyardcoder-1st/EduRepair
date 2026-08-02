@@ -20,6 +20,28 @@
         "name": "2",
         "password": "2",
         "score": 10,
-        "tasks": []
+        "tasks": [
+            {
+                "job": "test",
+                "note": "test",
+                "status": "in_progress",
+                "time": "test"
+            }
+        ]
+    },
+    {
+        "class": "A3",
+        "id": "HS01A3",
+        "name": "3",
+        "password": "3",
+        "score": 0,
+        "tasks": [
+            {
+                "job": "image test",
+                "note": "test",
+                "status": "in_progress",
+                "time": "test"
+            }
+        ]
     }
 ]

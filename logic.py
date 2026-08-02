@@ -6,6 +6,8 @@ import urllib.error
 import ssl
 import base64
 import shutil
+import io
+from PIL import Image
 
 try:
     _context = ssl.create_default_context()
@@ -73,18 +75,14 @@ class AppController:
 
         self.admin_key = "123"
 
-        # Ensure uploads folder exists
+        # Temporary Base64 holder for image uploads
+        self.temp_image_base64 = None
 
-        self.upload_dir = "uploads"
+        # Inside __init__ in logic.py:
+        self.page.on_route_change = self.handle_route_change
 
-        if not os.path.exists(self.upload_dir):
-
-            os.makedirs(self.upload_dir)
-
-        # FilePicker Setup (Fixed for Flet)
-        self.selected_image_path = None
-        self.file_picker = ft.FilePicker()
-        self.file_picker.on_result = self.on_file_selected  # Assign event handler directly
+        # Initialize FilePicker for Flet 0.22.1
+        self.file_picker = ft.FilePicker(on_result=self.on_file_picker_result)
         self.page.overlay.append(self.file_picker)
 
         # =========================
@@ -303,47 +301,6 @@ class AppController:
         )
 
     # =========================
-    # LƯU ẢNH VÀO THƯ MỤC LOCAL
-    # =========================
-    def save_uploaded_image(self, src_path, file_name):
-        try:
-            if not os.path.exists("uploads"):
-                os.makedirs("uploads")
-
-            ext = os.path.splitext(file_name)[1]
-            if not ext:
-                ext = ".png"
-
-            user_id = self.current_user.get("id", "user") if self.current_user else "user"
-            new_filename = f"proof_{user_id}_{file_name}"
-            dest_path = os.path.join("uploads", new_filename)
-
-            import shutil
-            shutil.copy(src_path, dest_path)
-            return dest_path
-        except Exception as e:
-            print("Lỗi lưu ảnh:", e)
-            return None
-
-    # =========================
-    # FILE PICKER CALLBACK
-    # =========================
-    def on_file_selected(self, e: ft.FilePickerResultEvent):
-        if e.files and len(e.files) > 0:
-            selected_file = e.files[0]
-            saved_path = self.save_uploaded_image(selected_file.path, selected_file.name)
-            if saved_path:
-                self.selected_image_path = saved_path
-                self.show_message("Đã chọn ảnh minh chứng thành công!")
-                if hasattr(self, "image_preview_text") and self.image_preview_text:
-                    self.image_preview_text.value = f"📷 {os.path.basename(saved_path)}"
-                    self.page.update()
-        else:
-            self.show_message("Chưa chọn ảnh nào.")
-
-
-
-    # =========================
     # THÔNG BÁO
     # =========================
 
@@ -472,6 +429,94 @@ class AppController:
             )
             return False
 
+    def process_and_compress_image(file_bytes) -> str:
+        """
+        Takes raw uploaded image bytes, resizes them proportionally to max 480px,
+        compresses JPEG quality to 70%, and returns a Base64 data string.
+        """
+        try:
+            # 1. Open image from raw memory bytes
+            img = Image.open(io.BytesIO(file_bytes)).convert("RGB")
+
+            # 2. Proportionally resize max dimension to 480px
+            img.thumbnail((480, 480), Image.Resampling.LANCZOS)
+
+            # 3. Save compressed JPEG into an in-memory buffer
+            buffer = io.BytesIO()
+            img.save(buffer, format="JPEG", quality=70, optimize=True)
+
+            # 4. Convert compressed bytes to Base64 string
+            encoded_string = base64.b64encode(buffer.getvalue()).decode("utf-8")
+
+            return f"data:image/jpeg;base64,{encoded_string}"
+        except Exception as e:
+            print("Image Compression Error:", e)
+            return None
+
+    def trigger_upload_picker(self, e):
+        """Opens native OS File Explorer"""
+        self.file_picker.pick_files(
+            allow_multiple=False,
+            file_type=ft.FilePickerFileType.IMAGE
+        )
+
+    def on_file_picker_result(self, e: ft.FilePickerResultEvent):
+        """Handles selected image from File Explorer"""
+        if not e.files or len(e.files) == 0:
+            return
+
+        selected_file = e.files[0]
+        file_bytes = None
+
+        # 1. Desktop Mode (reads from local path)
+        if selected_file.path:
+            try:
+                with open(selected_file.path, "rb") as f:
+                    file_bytes = f.read()
+            except Exception as ex:
+                print("Lỗi đọc file:", ex)
+                return
+
+        # 2. Web Mode (safely reads bytes property if present)
+        elif hasattr(selected_file, "bytes") and selected_file.bytes:
+            file_bytes = selected_file.bytes
+
+        # 3. Process image and update interface
+        if file_bytes:
+            # Compress / convert image to base64
+            encoded = base64.b64encode(file_bytes).decode("utf-8")
+            self.temp_image_base64 = f"data:image/png;base64,{encoded}"
+
+            self.show_message("Đã chọn ảnh minh chứng! Bấm 'Nộp Minh Chứng' để gửi.")
+
+            # Re-render UI so build_upload_box() displays the preview
+            self.show_student_progress()
+
+
+    def handle_route_change(self, e):
+        """Lắng nghe dữ liệu Base64 từ JavaScript truyền về"""
+        route = self.page.route
+        if route and route.startswith("#img_upload:"):
+            # Lấy chuỗi base64 thực sự
+            raw_base64 = route.replace("#img_upload:", "")
+
+            # Xóa hash trên thanh địa chỉ để không bị lặp
+            self.page.route = "/"
+
+            # Chuyển Base64 sang dạng bytes và thực hiện nén
+            try:
+                # Tách phần header header data:image/jpeg;base64, nếu có
+                if "," in raw_base64:
+                    header, encoded = raw_base64.split(",", 1)
+                    file_bytes = base64.b64decode(encoded)
+                else:
+                    file_bytes = base64.b64decode(raw_base64)
+
+                # Nén ảnh 480px và cập nhật giao diện
+                self.handle_image_selected(file_bytes)
+            except Exception as err:
+                print("Lỗi giải mã ảnh từ JS:", err)
+
     # =========================
     # SAVE CHÍNH
     # =========================
@@ -488,17 +533,13 @@ class AppController:
                 "Chỉ lưu local"
             )
 
-
-    # =========================
+    #======================
     # START APP
-    # =========================
+    #======================
 
     def start(self):
-
         self.load_data()
-
         self.check_data()
-
         self.show_role_select()
 
     # =========================
@@ -658,7 +699,134 @@ class AppController:
             with open("history.json", "w", encoding="utf-8") as f:
                 json.dump(history, f, ensure_ascii=False, indent=4)
         except Exception as e:
-            print(f"Error saving history: {e}")
+            print(f"Error saving history: {e}"
+
+    )
+
+    def build_upload_box(self):
+        if self.temp_image_base64:
+            box_content = ft.Column(
+                controls=[
+                    ft.Image(
+                        src_base64=self.temp_image_base64.split(",")[-1],
+                        width=200,
+                        height=120,
+                        fit=ft.ImageFit.CONTAIN,
+                        border_radius=8
+                    ),
+                    ft.Text("Chạm để đổi ảnh khác", size=11, color=self.gray)
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=4
+            )
+        else:
+            box_content = ft.Row(
+                controls=[
+                    ft.Icon(ft.icons.CLOUD_UPLOAD_OUTLINED, size=22, color=self.blue),
+                    ft.Text("Chạm vào đây để chọn ảnh minh chứng", size=12, color=self.dark)
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                spacing=8
+            )
+
+        return ft.Container(
+            content=box_content,
+            padding=12,
+            border=ft.border.all(1, self.blue),
+            border_radius=10,
+            bgcolor="#EFF6FF",
+            on_click=self.trigger_upload_picker
+        )
+
+
+
+    # =========================
+    # CẬP NHẬT TRẠNG THÁI KHUNG UPLOAD
+    # =========================
+    def handle_image_selected(self, file_bytes):
+        if not file_bytes:
+            return
+
+        # 1. Trạng thái đang xử lý
+        self.upload_status_icon.visible = False
+        self.upload_progress.visible = True
+        self.upload_status_text.value = "Đang xử lý ảnh..."
+        self.upload_status_text.color = self.orange
+        self.page.update()
+
+        # 2. Nén ảnh
+        compressed_base64 = self.process_and_compress_image(file_bytes)
+
+        # 3. Trạng thái kết quả
+        if compressed_base64:
+            self.temp_image_base64 = compressed_base64
+
+            self.upload_progress.visible = False
+            self.upload_status_icon.name = "check_circle"  # Direct string name
+            self.upload_status_icon.color = self.green
+            self.upload_status_icon.visible = True
+
+            self.upload_status_text.value = "Đã tải ảnh lên thành công!"
+            self.upload_status_text.color = self.green
+
+            # Mở khóa nút Nộp bài (Chuyển sang Xanh)
+            if hasattr(self, "submit_btn") and self.submit_btn:
+                self.submit_btn.disabled = False
+                self.submit_btn.bgcolor = self.blue
+        else:
+            self.temp_image_base64 = None
+
+            self.upload_progress.visible = False
+            self.upload_status_icon.name = "error"         # Direct string name
+            self.upload_status_icon.color = self.red
+            self.upload_status_icon.visible = True
+
+            self.upload_status_text.value = "Lỗi xử lý ảnh, thử lại!"
+            self.upload_status_text.color = self.red
+
+            # Khóa nút Nộp bài (Giữ màu Xám)
+            if hasattr(self, "submit_btn") and self.submit_btn:
+                self.submit_btn.disabled = True
+                self.submit_btn.bgcolor = self.gray
+
+        self.page.update()
+
+    # =========================
+    # NỘP BÀI TỰ ĐỘNG LƯU DATABASE
+    # =========================
+    def submit_proof(self, task_index):
+        if not self.temp_image_base64:
+            self.show_message("Vui lòng chọn ảnh minh chứng trước!")
+            return
+
+        try:
+            # Cập nhật trạng thái task
+            self.current_user["tasks"][task_index]["status"] = "completed"
+            self.current_user["tasks"][task_index]["proof"] = self.temp_image_base64
+
+            # Cập nhật mảng students chính
+            for idx, student in enumerate(self.students):
+                if student.get("name") == self.current_user.get("name") and student.get("dob") == self.current_user.get("dob"):
+                    self.students[idx] = self.current_user
+                    break
+
+            # Lưu vào Local + Firebase
+            self.save_data()
+
+            # Reset state tạm
+            self.temp_image_base64 = None
+
+            self.show_message("Nộp minh chứng thành công!")
+            self.show_student_progress()
+        except Exception as ex:
+            print("Lỗi nộp bài:", ex)
+            self.show_message("Có lỗi xảy ra khi nộp bài!")
+
+    def show_message(self, msg):
+        snack = ft.SnackBar(content=ft.Text(msg))
+        self.page.snack_bar = snack
+        snack.open = True
+        self.page.update()
 
     # =========================
     # MÀN HÌNH CHỌN VAI TRÒ
@@ -795,20 +963,30 @@ class AppController:
     # =========================
 
     def show_admin_login(self):
+        # Dedicated error message label styled to match your login_error_text
+        self.admin_error_text = ft.Text("", color=self.red, size=13, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER)
 
         def login(e):
             key = self.admin_key_login.value.strip()
 
+            # 1. Check empty password
+            if not key:
+                self.admin_error_text.value = "Nhập mật khẩu"
+                self.page.update()
+                return
+
+            # 2. Check correct password
             if key == self.admin_key:
+                self.admin_error_text.value = ""
                 self.current_user = {
                     "role": "admin",
                     "name": "Võ Thị Yến Nhi"
                 }
                 self.show_admin_home()
             else:
-                self.show_message(
-                    "Sai mã bảo mật Admin!"
-                )
+                # 3. Wrong password
+                self.admin_error_text.value = "Sai mật khẩu"
+                self.page.update()
 
         body = ft.Column(
             controls=[
@@ -826,6 +1004,8 @@ class AppController:
                 ft.Container(height=10),
 
                 self.admin_key_login,
+
+                self.admin_error_text, # <--- Inline error message label
 
                 ft.Container(height=10),
 
@@ -2943,144 +3123,98 @@ class AppController:
         self.root.content = card_container
         self.page.update()
 
-        # =========================
-        # HỌC SINH: TIẾN TRÌNH RÈN LUYỆN
-        # =========================
+    # =========================
+    # MÀN HÌNH TIẾN TRÌNH HỌC SINH
+    # =========================
     def show_student_progress(self):
-            self.load_data()
-            self.check_data()
+        if not self.current_user:
+            self.show_role_select()
+            return
 
-            top_bar = ft.Row(
-                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                controls=[
-                    ft.Column(
-                        spacing=1,
-                        controls=[
-                            ft.Text("TIẾN TRÌNH RÈN LUYỆN", size=15, weight=ft.FontWeight.BOLD, color=self.dark),
-                            ft.Text("Phần việc đang thực hiện", size=11, color=self.orange)
-                        ]
-                    ),
-                    ft.Container(
-                        on_click=lambda e: self.show_student_home(),
-                        padding=ft.Padding(10, 6, 10, 6),
-                        border_radius=8,
-                        bgcolor="#E2E8F0",
-                        content=ft.Text("Quay lại", size=11, color=self.dark, weight=ft.FontWeight.BOLD)
-                    )
-                ]
+        top_bar = ft.Row(
+            controls=[
+                ft.IconButton(
+                    icon=ft.icons.ARROW_BACK,
+                    icon_color=self.dark,
+                    on_click=lambda e: self.show_student_home()
+                ),
+                ft.Text("Tiến trình rèn luyện", size=18, weight=ft.FontWeight.BOLD, color=self.dark)
+            ],
+            alignment=ft.MainAxisAlignment.START
+        )
+
+        tasks = self.current_user.get("tasks") or []
+        task_controls = []
+
+        if not tasks:
+            task_controls.append(
+                ft.Text("Hiện chưa có nhiệm vụ nào được giao.", size=13, color=self.gray)
             )
+        else:
+            for idx, task in enumerate(tasks):
+                task_title = task.get("title", f"Nhiệm vụ {idx + 1}")
+                task_date = task.get("date", "Chưa cập nhật")
+                is_completed = task.get("status") == "completed"
 
-            subtitle = ft.Text("Danh sách các công việc đã đăng kí thành công:", size=11, color=self.gray)
-
-            task_cards = []
-
-            def submit_completion(task):
-                # Update task status to pending review
-                task["status"] = "pending_review"
-
-                # Sync back to main self.students list
-                if self.current_user:
-                    for s in self.students:
-                        if isinstance(s, dict) and s.get("id") == self.current_user.get("id"):
-                            s["tasks"] = self.current_user.get("tasks", [])
-                            break
-
-                self.save_data()
-                self.show_message("Đã gửi báo cáo hoàn thành! Đang chờ Admin nghiệm thu.")
-                self.show_student_progress()
-
-            if self.current_user and isinstance(self.current_user.get("tasks"), list):
-                for task in self.current_user["tasks"]:
-                    if not isinstance(task, dict):
-                        continue
-
-                    status = task.get("status")
-                    # Show only active/in-progress tasks
-                    if status in ["in_progress", "Đang rèn luyện"]:
-                        card = ft.Container(
-                            padding=12,
-                            bgcolor="#FFF7ED",
-                            border=ft.Border(
-                                top=ft.BorderSide(1, "#FFEDD5"),
-                                bottom=ft.BorderSide(1, "#FFEDD5"),
-                                left=ft.BorderSide(1, "#FFEDD5"),
-                                right=ft.BorderSide(1, "#FFEDD5"),
-                            ),
-                            border_radius=12,
-                            content=ft.Column(
-                                spacing=6,
-                                controls=[
-                                    ft.Row(
-                                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                        controls=[
-                                            ft.Text("⚡ Đang thực hiện", size=11, weight=ft.FontWeight.BOLD,
-                                                    color=self.orange),
-                                        ]
-                                    ),
-                                    ft.Text(f"📌 Công việc: {task.get('job', '')}", size=12, weight=ft.FontWeight.BOLD,
-                                            color=self.dark),
-                                    ft.Text(f"⏱️ Thời gian: {task.get('time', '')}", size=11, color=self.gray),
-                                    ft.Text(f"📝 Ghi chú: {task.get('note', '')}", size=11, color=self.gray),
-                                    ft.Container(height=4),
-                                    ft.Row(
-                                        controls=[
-                                            ft.ElevatedButton(
-                                                "Báo cáo kết quả",
-                                                bgcolor=self.green,
-                                                color="white",
-                                                icon=ft.Icons.CHECK_CIRCLE,
-                                                on_click=lambda e, t=task: submit_completion(t),
-                                                expand=True
-                                            )
-                                        ]
-                                    )
-                                ]
-                            )
-                        )
-                        task_cards.append(card)
-
-            if not task_cards:
-                task_cards.append(
-                    ft.Container(
-                        padding=30,
-                        alignment=ft.alignment.Alignment(0, 0),
-                        content=ft.Text(
-                            "Hiện tại chưa có phần việc nào đang rèn luyện.\nHãy đăng kí phần việc mới ở trang chính!",
-                            size=12,
-                            color=self.gray,
-                            text_align=ft.TextAlign.CENTER
-                        )
-                    )
+                status_tag = ft.Container(
+                    content=ft.Text(
+                        "Đã hoàn thành" if is_completed else "Chưa nộp",
+                        size=11,
+                        color=self.white,
+                        weight=ft.FontWeight.BOLD
+                    ),
+                    bgcolor=self.green if is_completed else self.orange,
+                    padding=ft.padding.symmetric(horizontal=8, vertical=4),
+                    border_radius=6
                 )
 
-            list_content = ft.Column(
-                spacing=10,
-                scroll=ft.ScrollMode.AUTO,
-                controls=task_cards
-            )
+                card_item = ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Row(
+                                controls=[
+                                    ft.Text(task_title, size=14, weight=ft.FontWeight.BOLD, color=self.dark, expand=True),
+                                    status_tag
+                                ],
+                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+                            ),
+                            ft.Text(f"Ngày đăng ký: {task_date}", size=12, color=self.gray),
+                            ft.Container(height=8),
 
-            body = ft.Column(
-                spacing=12,
-                controls=[
-                    top_bar,
-                    subtitle,
-                    ft.Container(content=list_content, height=330)
-                ]
-            )
+                            # Khung chọn & xem ảnh minh chứng
+                            self.build_upload_box(),
 
-            card_container = ft.Container(
-                content=body,
-                width=380,
-                padding=20,
-                bgcolor=self.white,
-                border_radius=15,
-                shadow=ft.BoxShadow(blur_radius=15, offset=ft.Offset(0, 5))
-            )
+                            ft.Container(height=8),
+                            ft.ElevatedButton(
+                                "Nộp Minh Chứng",
+                                width=280,
+                                height=40,
+                                bgcolor=self.blue if self.temp_image_base64 else self.gray,
+                                color=self.white,
+                                on_click=lambda e, t_idx=idx: self.submit_proof(t_idx)
+                            )
+                        ],
+                        spacing=4
+                    ),
+                    padding=16,
+                    border=ft.border.all(1, "#E2E8F0"),
+                    border_radius=12,
+                    bgcolor="#F8FAFC"
+                )
+                task_controls.append(card_item)
 
-            self.root.content = card_container
-            self.page.update()
+        body = ft.Column(
+            controls=[
+                top_bar,
+                ft.Container(height=10),
+                *task_controls
+            ],
+            spacing=10,
+            scroll=ft.ScrollMode.AUTO
+        )
 
+        self.root.content = self.card(body)
+        self.page.update()
 
     # =========================
     # LÀM MỚI DỮ LIỆU

@@ -32,9 +32,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Compile Flet Web Distribution
+      - name: Build Web App
         run: |
-          flet build web --base-url /EduRepair/ --yes
+          flet build web --base-url /EduRepair/
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3

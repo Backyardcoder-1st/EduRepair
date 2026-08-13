@@ -1,7 +1,11 @@
-
 import flet as ft
 from logic import AppController
 import mimetypes
+import os  # <--- Make sure os is imported
+
+# Set the upload secret key environment variable
+os.environ["FLET_SECRET_KEY"] = "edurepair_secret_key_123"
+os.makedirs("uploads", exist_ok=True)
 
 mimetypes.add_type("application/javascript", ".js")
 mimetypes.add_type("application/javascript", ".mjs")
@@ -20,7 +24,6 @@ def main(page: ft.Page):
 
     page.add(app.root)
 
-    # chỉ gọi nếu logic.py có hàm start()
     if hasattr(app, "start"):
         app.start()
 
@@ -29,5 +32,6 @@ if __name__ == "__main__":
     ft.app(
         target=main,
         assets_dir="assets",
+        upload_dir="uploads",                  # Folder where uploaded files go
         view=ft.AppView.WEB_BROWSER
     )

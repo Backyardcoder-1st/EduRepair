@@ -68,6 +68,7 @@ class AppController:
         ).decode()
 
         self.students = []
+        self.history = []
 
         self.current_user = None
 
@@ -81,8 +82,11 @@ class AppController:
         # Inside __init__ in logic.py:
         self.page.on_route_change = self.handle_route_change
 
-        # Initialize FilePicker for Flet 0.22.1
-        self.file_picker = ft.FilePicker(on_result=self.on_file_picker_result)
+        # Inside __init__ in logic.py:
+        self.file_picker = ft.FilePicker(
+            on_result=self.on_file_picker_result,
+            on_upload=self.on_file_upload_complete
+        )
         self.page.overlay.append(self.file_picker)
 
         # =========================
@@ -327,34 +331,142 @@ class AppController:
     # =========================
 
     def load_data(self):
-        loaded = False
+        # =========================
+        # 1. LOAD STUDENTS
+        # =========================
+        loaded_students = False
         try:
             request = urllib.request.Request(self.db_url, method="GET")
             with urllib.request.urlopen(request, timeout=5, context=_context) as response:
                 data = json.loads(response.read().decode())
                 if isinstance(data, dict):
                     self.students = list(data.values())
-                    loaded = True
+                    loaded_students = True
                 elif isinstance(data, list):
                     self.students = data
-                    loaded = True
-                print("Firebase load thành công")
+                    loaded_students = True
+                print("Firebase students load thành công")
         except Exception as e:
-            print("Firebase đọc lỗi:", e)
+            print("Firebase students đọc lỗi:", e)
 
-        # Fallback to local students.json if Firebase failed
-        if not loaded:
+        if not loaded_students:
             if os.path.exists(self.file):
                 try:
                     with open(self.file, "r", encoding="utf-8") as f:
                         data = json.load(f)
                         if isinstance(data, list):
                             self.students = data
-                            print("Đã load từ local file students.json")
                 except Exception as ex:
-                    print("Lỗi đọc file local:", ex)
+                    print("Lỗi đọc file local students.json:", ex)
             if not hasattr(self, "students") or self.students is None:
                 self.students = []
+
+        # =========================
+        # 2. LOAD HISTORY FROM TOP-LEVEL ROOT NODE
+        # =========================
+        loaded_history = False
+        try:
+            base_url = self.db_url.rsplit('/', 1)[0] if '/students' in self.db_url else self.db_url.rsplit('.json', 1)[0]
+            history_db_url = f"{base_url}/history.json"
+
+            request = urllib.request.Request(history_db_url, method="GET")
+            with urllib.request.urlopen(request, timeout=5, context=_context) as response:
+                hist_data = json.loads(response.read().decode())
+                if isinstance(hist_data, list):
+                    self.history = hist_data
+                    loaded_history = True
+                elif isinstance(hist_data, dict):
+                    self.history = list(hist_data.values())
+                    loaded_history = True
+                print("Firebase history load thành công từ /history")
+        except Exception as e:
+            print("Firebase history đọc lỗi:", e)
+
+        if not loaded_history:
+            history_file = "history.json"
+            if os.path.exists(history_file):
+                try:
+                    with open(history_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        self.history = data if isinstance(data, list) else []
+                except Exception as e:
+                    print("Lỗi đọc file local history.json:", e)
+                    self.history = []
+            else:
+                self.history = []
+
+    def save_data(self):
+        # =========================
+        # 1. SAVE STUDENTS (Local & Firebase)
+        # =========================
+        # Local students.json
+        try:
+            with open(self.file, "w", encoding="utf-8") as f:
+                json.dump(self.students, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print("Lỗi ghi local students.json:", e)
+
+        # Firebase Realtime DB (Students)
+        try:
+            if hasattr(self, "db_url") and self.db_url:
+                req_data = json.dumps(self.students).encode("utf-8")
+                request = urllib.request.Request(self.db_url, data=req_data, method="PUT", headers={"Content-Type": "application/json"})
+                with urllib.request.urlopen(request, timeout=5, context=_context) as response:
+                    pass
+        except Exception as e:
+            print("Lỗi ghi Firebase students:", e)
+
+        # =========================
+        # 2. SAVE HISTORY (Local & Top-Level Firebase Root)
+        # =========================
+        # Local history.json
+        try:
+            if hasattr(self, "history") and self.history is not None:
+                with open("history.json", "w", encoding="utf-8") as f:
+                    json.dump(self.history, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print("Lỗi ghi file local history.json:", e)
+
+        # Firebase Realtime DB (History as a separate Root Node)
+        try:
+            if hasattr(self, "db_url") and self.db_url and hasattr(self, "history") and self.history is not None:
+                # Derive root database URL by stripping 'students.json' or trailing paths
+                base_url = self.db_url.rsplit('/', 1)[0] if '/students' in self.db_url else self.db_url.rsplit('.json', 1)[0]
+                history_db_url = f"{base_url}/history.json"
+
+                req_data = json.dumps(self.history).encode("utf-8")
+                request = urllib.request.Request(history_db_url, data=req_data, method="PUT", headers={"Content-Type": "application/json"})
+                with urllib.request.urlopen(request, timeout=5, context=_context) as response:
+                    pass
+                print("Firebase history save thành công vào node gốc /history")
+        except Exception as e:
+            print("Lỗi ghi Firebase history:", e)
+
+        # =========================
+        # 2. SAVE HISTORY (Local & Top-Level Firebase Root)
+        # =========================
+        # Local history.json
+        try:
+            if hasattr(self, "history") and self.history is not None:
+                with open("history.json", "w", encoding="utf-8") as f:
+                    json.dump(self.history, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print("Lỗi ghi file local history.json:", e)
+
+        # Firebase Realtime DB (History as a separate Root Node)
+        try:
+            if hasattr(self, "db_url") and self.db_url and hasattr(self, "history") and self.history is not None:
+                # Derive root database URL by stripping 'students.json' or trailing paths
+                base_url = self.db_url.rsplit('/', 1)[0] if '/students' in self.db_url else self.db_url.rsplit('.json', 1)[0]
+                history_db_url = f"{base_url}/history.json"
+
+                req_data = json.dumps(self.history).encode("utf-8")
+                request = urllib.request.Request(history_db_url, data=req_data, method="PUT", headers={"Content-Type": "application/json"})
+                with urllib.request.urlopen(request, timeout=5, context=_context) as response:
+                    pass
+                print("Firebase history save thành công vào node gốc /history")
+        except Exception as e:
+            print("Lỗi ghi Firebase history:", e)
 
 
     # =========================
@@ -455,42 +567,65 @@ class AppController:
 
     def trigger_upload_picker(self, e):
         """Opens native OS File Explorer"""
+        # Ensure file picker is attached to page overlay
+        if self.file_picker not in self.page.overlay:
+            self.page.overlay.append(self.file_picker)
+            self.page.update()
+
+        self.file_picker.pick_files(
+            allow_multiple=False,
+            file_type=ft.FilePickerFileType.IMAGE
+        )
+
+    def pick_image(self, e):
+        """Triggers the file picker dialog."""
         self.file_picker.pick_files(
             allow_multiple=False,
             file_type=ft.FilePickerFileType.IMAGE
         )
 
     def on_file_picker_result(self, e: ft.FilePickerResultEvent):
-        """Handles selected image from File Explorer"""
-        if not e.files or len(e.files) == 0:
+        """Triggered as soon as the user selects a file in the browser file dialog."""
+        if not e.files:
             return
 
-        selected_file = e.files[0]
-        file_bytes = None
+        f = e.files[0]
 
-        # 1. Desktop Mode (reads from local path)
-        if selected_file.path:
-            try:
-                with open(selected_file.path, "rb") as f:
-                    file_bytes = f.read()
-            except Exception as ex:
-                print("Lỗi đọc file:", ex)
-                return
+        # Local Desktop path execution
+        if f.path and os.path.exists(f.path):
+            with open(f.path, "rb") as file_data:
+                raw_bytes = file_data.read()
+            self._process_raw_image_bytes(raw_bytes, f.name)
 
-        # 2. Web Mode (safely reads bytes property if present)
-        elif hasattr(selected_file, "bytes") and selected_file.bytes:
-            file_bytes = selected_file.bytes
+        # Web Mode execution: Stream directly to server upload endpoint
+        else:
+            upload_url = self.page.get_upload_url(f.name, 600)
+            self.file_picker.upload([
+                ft.FilePickerUploadFile(f.name, upload_url=upload_url)
+            ])
 
-        # 3. Process image and update interface
-        if file_bytes:
-            # Compress / convert image to base64
-            encoded = base64.b64encode(file_bytes).decode("utf-8")
-            self.temp_image_base64 = f"data:image/png;base64,{encoded}"
+    def on_file_upload_complete(self, e: ft.FilePickerUploadEvent):
+        """Triggered when browser finishes streaming file bytes to the server."""
+        if e.progress == 1.0:
+            uploaded_path = os.path.join("uploads", e.file_name)
+            with open(uploaded_path, "rb") as f:
+                raw_bytes = f.read()
+            self._process_raw_image_bytes(raw_bytes, e.file_name)
 
-            self.show_message("Đã chọn ảnh minh chứng! Bấm 'Nộp Minh Chứng' để gửi.")
+    def _process_raw_image_bytes(self, raw_bytes, file_name):
+        """Process raw file bytes into base64 payload without error wrapping."""
+        image = Image.open(io.BytesIO(raw_bytes))
+        if image.mode in ("RGBA", "P"):
+            image = image.convert("RGB")
 
-            # Re-render UI so build_upload_box() displays the preview
-            self.show_student_progress()
+        output = io.BytesIO()
+        image.save(output, format="JPEG", quality=70, optimize=True)
+        compressed_bytes = output.getvalue()
+
+        encoded = base64.b64encode(compressed_bytes).decode("utf-8")
+        self.temp_image_base64 = f"data:image/jpeg;base64,{encoded}"
+
+        self.show_student_progress()
 
 
     def handle_route_change(self, e):
@@ -505,7 +640,7 @@ class AppController:
 
             # Chuyển Base64 sang dạng bytes và thực hiện nén
             try:
-                # Tách phần header header data:image/jpeg;base64, nếu có
+                # Tách phần header data:image/jpeg;base64, nếu có
                 if "," in raw_base64:
                     header, encoded = raw_base64.split(",", 1)
                     file_bytes = base64.b64decode(encoded)
@@ -521,17 +656,6 @@ class AppController:
     # SAVE CHÍNH
     # =========================
 
-    def save_data(self):
-        self.backup_local()
-        ok = self.sync_firebase()
-        if ok:
-            print(
-                "Đã lưu lên web"
-            )
-        else:
-            print(
-                "Chỉ lưu local"
-            )
 
     #======================
     # START APP
@@ -563,28 +687,29 @@ class AppController:
         if not class_name:
             return "HS01A1"
 
-        target_class = str(class_name).strip().upper()
+        # Clean target class string (e.g., "A1", "A10")
+        target_class = str(class_name).replace("Lớp ", "").replace("lớp ", "").strip().upper()
         existing_numbers = []
 
-        # Find numbers used within this specific class
+        # Scan all existing students belonging to this class
         for student in self.students:
-            if not isinstance(student, dict) or student.get("role") != "student":
+            if not isinstance(student, dict):
                 continue
 
-            st_class = str(student.get("class", "")).strip().upper()
+            st_class = str(student.get("class", "")).replace("Lớp ", "").replace("lớp ", "").strip().upper()
             if st_class == target_class:
                 st_id = str(student.get("id", "")).strip().upper()
 
-                # Parse IDs following HSxx<CLASS> format (e.g. HS07A1)
+                # Parse IDs following HS[numerical order][Class] format (e.g. HS01A1)
                 if st_id.startswith("HS"):
                     numeric_part = st_id[2:]
                     if numeric_part.endswith(target_class):
                         numeric_part = numeric_part[:-len(target_class)]
-                    try:
-                        num = int(numeric_part)
-                        existing_numbers.append(num)
-                    except ValueError:
-                        pass
+                        try:
+                            num = int(numeric_part)
+                            existing_numbers.append(num)
+                        except ValueError:
+                            pass
 
         if not existing_numbers:
             return f"HS01{target_class}"
@@ -682,8 +807,8 @@ class AppController:
     #=========================
     #File lưu trữ công việc
     #=========================
-
     def load_history(self):
+        """Reads local history.json if available"""
         if not os.path.exists("history.json"):
             return []
         try:
@@ -692,25 +817,57 @@ class AppController:
         except Exception:
             return []
 
+    def sync_history_firebase(self, history_data):
+        """Creates/Updates history.json endpoint in Firebase Realtime Database"""
+        try:
+            # Construct endpoint URL for history.json
+            history_url = self.db_url.rsplit('/', 1)[0] + "/history.json"
+
+            data = json.dumps(history_data, ensure_ascii=False).encode("utf-8")
+            request = urllib.request.Request(
+                history_url,
+                data=data,
+                method="PUT",
+                headers={"Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(request, timeout=8, context=_context) as response:
+                print("Firebase history sync OK")
+                return True
+        except Exception as e:
+            print("Firebase history sync error:", e)
+            return False
+
     def save_history_record(self, record):
+        """Saves history record locally and syncs to Firebase history.json automatically"""
         history = self.load_history()
         history.append(record)
+
+        # 1. Save local history.json
         try:
             with open("history.json", "w", encoding="utf-8") as f:
                 json.dump(history, f, ensure_ascii=False, indent=4)
         except Exception as e:
-            print(f"Error saving history: {e}"
+            print(f"Error saving local history: {e}")
 
-    )
+        # 2. Sync to Firebase Realtime Database automatically
+        self.sync_history_firebase(history)
 
     def build_upload_box(self):
+        """Builds the upload box with updated placeholder text and preview"""
         if self.temp_image_base64:
+            # Clean base64 string if data URI prefix exists
+            b64_data = (
+                self.temp_image_base64.split(",")[-1]
+                if "," in self.temp_image_base64
+                else self.temp_image_base64
+            )
+
             box_content = ft.Column(
                 controls=[
                     ft.Image(
-                        src_base64=self.temp_image_base64.split(",")[-1],
-                        width=200,
-                        height=120,
+                        src_base64=b64_data,
+                        width=220,
+                        height=130,
                         fit=ft.ImageFit.CONTAIN,
                         border_radius=8
                     ),
@@ -723,7 +880,7 @@ class AppController:
             box_content = ft.Row(
                 controls=[
                     ft.Icon(ft.icons.CLOUD_UPLOAD_OUTLINED, size=22, color=self.blue),
-                    ft.Text("Chạm vào đây để chọn ảnh minh chứng", size=12, color=self.dark)
+                    ft.Text("Chạm vào đây để nộp ảnh minh chứng", size=13, color=self.dark, weight=ft.FontWeight.W_500)
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
                 spacing=8
@@ -731,7 +888,7 @@ class AppController:
 
         return ft.Container(
             content=box_content,
-            padding=12,
+            padding=14,
             border=ft.border.all(1, self.blue),
             border_radius=10,
             bgcolor="#EFF6FF",
@@ -795,32 +952,25 @@ class AppController:
     # NỘP BÀI TỰ ĐỘNG LƯU DATABASE
     # =========================
     def submit_proof(self, task_index):
+        """Submits task proof with image and updates status for Admin review"""
         if not self.temp_image_base64:
-            self.show_message("Vui lòng chọn ảnh minh chứng trước!")
+            self.show_message("Vui lòng đính kèm ảnh minh chứng!")
             return
 
-        try:
-            # Cập nhật trạng thái task
-            self.current_user["tasks"][task_index]["status"] = "completed"
-            self.current_user["tasks"][task_index]["proof"] = self.temp_image_base64
+        tasks = self.current_user.get("tasks", [])
+        if 0 <= task_index < len(tasks):
+            # Flag task as pending approval and attach image
+            tasks[task_index]["status"] = "pending_approval"
+            tasks[task_index]["proof_image"] = self.temp_image_base64
 
-            # Cập nhật mảng students chính
-            for idx, student in enumerate(self.students):
-                if student.get("name") == self.current_user.get("name") and student.get("dob") == self.current_user.get("dob"):
-                    self.students[idx] = self.current_user
-                    break
-
-            # Lưu vào Local + Firebase
+            # Save updated students list (local + Firebase)
             self.save_data()
 
-            # Reset state tạm
+            # Reset temp image container
             self.temp_image_base64 = None
 
-            self.show_message("Nộp minh chứng thành công!")
+            self.show_message("Gửi báo cáo kết quả thành công!")
             self.show_student_progress()
-        except Exception as ex:
-            print("Lỗi nộp bài:", ex)
-            self.show_message("Có lỗi xảy ra khi nộp bài!")
 
     def show_message(self, msg):
         snack = ft.SnackBar(content=ft.Text(msg))
@@ -1307,11 +1457,11 @@ class AppController:
 
         sliding_board = ft.Row(
             controls=[
-                feature_card("Danh sách đăng kí", "📝", self.blue, "#EFF6FF", lambda e: self.show_admin_registration_list()),
                 feature_card("Lớp học", "🏫", "#7C3AED", "#F3E8FF", lambda e: self.show_admin_classes()),
-                feature_card("Lỗi vi phạm", "⚠️", self.red, "#FEF2F2", lambda e: self.show_message("Chức năng 'Lỗi vi phạm' đang phát triển!")),
+                feature_card("Danh sách đăng kí", "📝", self.blue, "#EFF6FF", lambda e: self.show_admin_registration_list()),
                 feature_card("Tiến trình lao động", "⏳", self.orange, "#FFF7ED", lambda e: self.show_admin_labor_progress()),
                 feature_card("Kết quả lao động", "✅", self.green, "#F0FDF4", lambda e: self.show_admin_labor_results()),
+                feature_card("Lỗi vi phạm", "⚠️", self.red, "#FEF2F2", lambda e: self.show_message("Chức năng 'Lỗi vi phạm' đang phát triển!")),
             ],
             scroll=ft.ScrollMode.AUTO,
             spacing=10
@@ -1491,6 +1641,7 @@ class AppController:
     # =========================
 
     def show_admin_labor_results(self):
+        """Displays pending task approvals with zoomable proof image modal and deny/approve buttons"""
         self.load_data()
         self.check_data()
 
@@ -1502,7 +1653,7 @@ class AppController:
                     spacing=1,
                     controls=[
                         ft.Text("NGHIỆM THU LAO ĐỘNG", size=15, weight=ft.FontWeight.BOLD, color=self.dark),
-                        ft.Text("Duyệt hoàn thành & cộng điểm", size=11, color=self.gray)
+                        ft.Text("Duyệt hoặc từ chối báo cáo minh chứng", size=11, color=self.gray)
                     ]
                 ),
                 ft.Container(
@@ -1515,130 +1666,351 @@ class AppController:
             ]
         )
 
-        pending_cards = []
+        # Zoomable Image Popup Modal
+        def open_zoomable_image_popup(b64_data):
+            if not b64_data:
+                return
 
-        def approve_result(student, task):
-            student["score"] = student.get("score", 0) + 10
-            if "tasks" in student and isinstance(student["tasks"], list) and task in student["tasks"]:
-                student["tasks"].remove(task)
+            clean_b64 = b64_data.split(",")[-1] if "," in b64_data else b64_data
+
+            state = {
+                "scale": 1.0,
+                "x": 0.0,
+                "y": 0.0
+            }
+
+            image_ctrl = ft.Image(
+                src_base64=clean_b64,
+                fit=ft.ImageFit.CONTAIN,
+                width=320,
+                height=320,
+                scale=1.0,
+                offset=ft.Offset(0, 0)
+            )
+
+            image_container = ft.Container(
+                content=image_ctrl,
+                alignment=ft.alignment.center,
+                clip_behavior=ft.ClipBehavior.HARD_EDGE,
+                width=320,
+                height=320
+            )
+
+            def update_transform():
+                image_ctrl.scale = state["scale"]
+                image_ctrl.offset = ft.Offset(state["x"], state["y"])
+                zoom_text.value = f"{int(state['scale'] * 100)}%"
+                self.page.update()
+
+            def zoom_in(e):
+                if state["scale"] < 5.0:
+                    state["scale"] += 0.25
+                    update_transform()
+
+            def zoom_out(e):
+                if state["scale"] > 0.5:
+                    state["scale"] -= 0.25
+                    if state["scale"] <= 1.0:
+                        state["x"] = 0.0
+                        state["y"] = 0.0
+                    update_transform()
+
+            def reset_zoom(e):
+                state["scale"] = 1.0
+                state["x"] = 0.0  # Fixed typo comma here
+                state["y"] = 0.0
+                update_transform()
+
+            def on_scroll(e: ft.ScrollEvent):
+                if e.scroll_delta_y < 0:
+                    zoom_in(None)
+                else:
+                    zoom_out(None)
+
+            def on_pan_update(e: ft.DragUpdateEvent):
+                state["x"] += e.delta_x / 200.0
+                state["y"] += e.delta_y / 200.0
+                update_transform()
+
+            def close_dlg(e):
+                dialog.open = False
+                self.page.update()
+
+            zoom_text = ft.Text("100%", size=11, weight=ft.FontWeight.BOLD, color=self.gray)
+
+            gesture_wrapper = ft.GestureDetector(
+                content=image_container,
+                on_scroll=on_scroll,
+                on_pan_update=on_pan_update,
+                drag_interval=10
+            )
+
+            dialog = ft.AlertDialog(
+                content_padding=10,
+                content=ft.Container(
+                    width=340,
+                    height=420,
+                    content=ft.Column(
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        controls=[
+                            gesture_wrapper,
+                            ft.Row(
+                                alignment=ft.MainAxisAlignment.CENTER,
+                                spacing=6,
+                                controls=[
+                                    ft.IconButton(
+                                        icon=ft.icons.REMOVE_CIRCLE_OUTLINED,
+                                        icon_size=20,
+                                        tooltip="Thu nhỏ",
+                                        on_click=zoom_out
+                                    ),
+                                    zoom_text,
+                                    ft.IconButton(
+                                        icon=ft.icons.ADD_CIRCLE_OUTLINED,
+                                        icon_size=20,
+                                        tooltip="Phóng to",
+                                        on_click=zoom_in
+                                    ),
+                                    ft.IconButton(
+                                        icon=ft.icons.REFRESH_OUTLINED,
+                                        icon_size=18,
+                                        tooltip="Đặt lại",
+                                        on_click=reset_zoom
+                                    ),
+                                    ft.Container(width=10),
+                                    ft.TextButton("Đóng", on_click=close_dlg)
+                                ]
+                            )
+                        ]
+                    )
+                )
+            )
+            self.page.overlay.append(dialog)
+            dialog.open = True
+            self.page.update()
+
+        # Task Approval Handler
+        def approve_task(student_obj, task_obj):
+            if isinstance(student_obj.get("tasks"), list) and task_obj in student_obj["tasks"]:
+                student_obj["tasks"].remove(task_obj)
 
             history_entry = {
-                "student_id": student.get("id", ""),
-                "student_name": student.get("name", ""),
-                "class": student.get("class", ""),
-                "job": task.get("job", ""),
-                "time": task.get("time", ""),
-                "note": task.get("note", ""),
-                "status": "completed"
+                "student_id": student_obj.get("id", ""),
+                "student_name": student_obj.get("name", ""),
+                "class": student_obj.get("class", ""),
+                "job": task_obj.get("job", ""),
+                "time": task_obj.get("time", ""),
+                "note": task_obj.get("note", ""),
+                "proof_image": task_obj.get("proof_image", ""),
+                "status": "complete",
+                "Reason": ""
             }
-            self.save_history_record(history_entry)
+
+            if not hasattr(self, "history") or self.history is None:
+                self.history = []
+
+            self.history.append(history_entry)
             self.save_data()
-            self.show_message(f"Đã duyệt +10đ cho {student.get('name')}")
+
+            self.show_message(
+                f"Đã duyệt công việc '{task_obj.get('job', 'N/A')}' cho {student_obj.get('name', 'Học sinh')}!")
             self.show_admin_labor_results()
 
-        def reject_result(student, task):
-            if "tasks" in student and isinstance(student["tasks"], list) and task in student["tasks"]:
-                student["tasks"].remove(task)
+        # Task 3 & 4: Deny Task Handler with Popup Reason Dialog
+        def open_deny_popup(student_obj, task_obj):
+            reason_input = ft.TextField(
+                label="Lý do từ chối",
+                hint_text="Nhập lý do từ chối...",
+                multiline=True,
+                min_lines=3,
+                max_lines=5,
+                filled=True,
+                autofocus=True
+            )
+            error_msg = ft.Text("", color=self.red, size=11)
 
-            history_entry = {
-                "student_id": student.get("id", ""),
-                "student_name": student.get("name", ""),
-                "class": student.get("class", ""),
-                "job": task.get("job", ""),
-                "time": task.get("time", ""),
-                "note": task.get("note", ""),
-                "status": "incomplete"
-            }
-            self.save_history_record(history_entry)
-            self.save_data()
-            self.show_message(f"Đã đánh giá chưa đạt cho {student.get('name')}")
-            self.show_admin_labor_results()
+            def close_deny_dlg(e):
+                dialog.open = False
+                self.page.update()
+
+            def confirm_deny(e):
+                reason_val = reason_input.value.strip() if reason_input.value else ""
+                if not reason_val:
+                    error_msg.value = "Vui lòng nhập lý do từ chối!"
+                    self.page.update()
+                    return
+
+                if isinstance(student_obj.get("tasks"), list) and task_obj in student_obj["tasks"]:
+                    student_obj["tasks"].remove(task_obj)
+
+                history_entry = {
+                    "student_id": student_obj.get("id", ""),
+                    "student_name": student_obj.get("name", ""),
+                    "class": student_obj.get("class", ""),
+                    "job": task_obj.get("job", ""),
+                    "time": task_obj.get("time", ""),
+                    "note": task_obj.get("note", ""),
+                    "proof_image": task_obj.get("proof_image", ""),
+                    "status": "incomplete",
+                    "Reason": reason_val
+                }
+
+                if not hasattr(self, "history") or self.history is None:
+                    self.history = []
+
+                self.history.append(history_entry)
+                self.save_data()
+
+                dialog.open = False
+                self.page.update()
+
+                self.show_message(f"Đã từ chối công việc của {student_obj.get('name', 'Học sinh')}.")
+                self.show_admin_labor_results()
+
+            dialog = ft.AlertDialog(
+                title=ft.Text("Từ chối báo cáo", size=14, weight=ft.FontWeight.BOLD, color=self.dark),
+                content=ft.Container(
+                    width=320,
+                    content=ft.Column(
+                        tight=True,  # Correct Flet parameter for min sizing
+                        spacing=8,
+                        controls=[
+                            ft.Text(f"Học sinh: {student_obj.get('name', 'N/A')}", size=11, color=self.gray),
+                            reason_input,
+                            error_msg
+                        ]
+                    )
+                ),
+                actions=[
+                    ft.TextButton("Hủy", on_click=close_deny_dlg),
+                    ft.ElevatedButton(
+                        "Xác nhận",
+                        bgcolor=self.red,
+                        color="white",
+                        on_click=confirm_deny
+                    )
+                ]
+            )
+            self.page.overlay.append(dialog)
+            dialog.open = True
+            self.page.update()
+
+        task_cards = []
 
         if isinstance(self.students, list):
             for student in self.students:
-                if not isinstance(student, dict):
-                    continue
-                tasks = student.get("tasks", [])
-                if not isinstance(tasks, list):
-                    continue
-                for task in tasks:
-                    if not isinstance(task, dict):
-                        continue
-                    status = str(task.get("status", "")).strip()
-                    if status in ["pending_review", "chờ nghiệm thu"]:
-                        card = ft.Container(
-                            padding=12,
-                            bgcolor="#F8FAFC",
-                            border=ft.Border(
-                                top=ft.BorderSide(1, "#E2E8F0"),
-                                bottom=ft.BorderSide(1, "#E2E8F0"),
-                                left=ft.BorderSide(1, "#E2E8F0"),
-                                right=ft.BorderSide(1, "#E2E8F0"),
-                            ),
-                            border_radius=10,
-                            content=ft.Column(
-                                spacing=6,
-                                controls=[
-                                    ft.Row(
-                                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                        controls=[
-                                            ft.Text(f"👤 {student.get('name', '')} ({student.get('class', '')})", size=12, weight=ft.FontWeight.BOLD, color=self.dark),
-                                            ft.Text(f"ID: {student.get('id', '')}", size=10, color=self.gray)
-                                        ]
-                                    ),
-                                    ft.Text(f"📌 Phần việc: {task.get('job', '')}", size=11, color=self.dark),
-                                    ft.Text(f"⏱️ Thời gian: {task.get('time', '')}", size=11, color=self.gray),
-                                    ft.Text(f"📝 Báo cáo: {task.get('note', 'Chưa có ghi chú')}", size=11, color=self.gray),
-                                    ft.Row(
-                                        alignment=ft.MainAxisAlignment.END,
-                                        spacing=8,
-                                        controls=[
-                                            ft.Container(
-                                                on_click=lambda e, s=student, t=task: reject_result(s, t),
-                                                padding=ft.Padding(8, 4, 8, 4),
-                                                bgcolor="#FEE2E2",
-                                                border_radius=6,
-                                                content=ft.Text("Chưa đạt", size=10, color=self.red, weight=ft.FontWeight.BOLD)
-                                            ),
-                                            ft.Container(
-                                                on_click=lambda e, s=student, t=task: approve_result(s, t),
-                                                padding=ft.Padding(8, 4, 8, 4),
-                                                bgcolor="#DCFCE7",
-                                                border_radius=6,
-                                                content=ft.Text("Duyệt (+10đ)", size=10, color=self.green, weight=ft.FontWeight.BOLD)
-                                            )
-                                        ]
-                                    )
-                                ]
-                            )
-                        )
-                        pending_cards.append(card)
+                if isinstance(student, dict) and "tasks" in student and isinstance(student["tasks"], list):
+                    for task in student["tasks"]:
+                        if isinstance(task, dict) and task.get("status") in ["pending_approval", "pending_approve"]:
+                            proof_b64 = task.get("proof_image", "")
 
-        if not pending_cards:
-            pending_cards.append(
+                            card = ft.Container(
+                                padding=14,
+                                bgcolor="#FFFFFF",
+                                border=ft.border.all(1, "#E2E8F0"),
+                                border_radius=12,
+                                shadow=ft.BoxShadow(blur_radius=6, offset=ft.Offset(0, 2)),
+                                content=ft.Column(
+                                    spacing=10,
+                                    controls=[
+                                        ft.Row(
+                                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                            controls=[
+                                                ft.Column(
+                                                    spacing=2,
+                                                    controls=[
+                                                        ft.Text(f"👤 {student.get('name', 'N/A')}", size=13,
+                                                                weight=ft.FontWeight.BOLD, color=self.dark),
+                                                        ft.Text(f"Lớp: {student.get('class', 'N/A')}", size=11,
+                                                                color=self.gray)
+                                                    ]
+                                                ),
+                                                ft.Container(
+                                                    padding=ft.Padding(8, 4, 8, 4),
+                                                    bgcolor="#FEF3C7",
+                                                    border_radius=6,
+                                                    content=ft.Text("Chờ nghiệm thu", size=10, color=self.orange,
+                                                                    weight=ft.FontWeight.BOLD)
+                                                )
+                                            ]
+                                        ),
+
+                                        ft.Divider(height=1, color="#F1F5F9"),
+
+                                        ft.Column(
+                                            spacing=2,
+                                            controls=[
+                                                ft.Text(f"📌 Công việc: {task.get('job', 'N/A')}", size=11,
+                                                        weight=ft.FontWeight.BOLD, color=self.dark),
+                                                ft.Text(f"⏱ Thời gian: {task.get('time', 'N/A')}", size=11,
+                                                        color=self.gray),
+                                                ft.Text(f"📝 Ghi chú: {task.get('note', 'Không có')}", size=11,
+                                                        color=self.gray)
+                                            ]
+                                        ),
+
+                                        ft.Container(
+                                            content=ft.Image(
+                                                src_base64=proof_b64.split(",")[-1] if "," in proof_b64 else proof_b64,
+                                                width=330,
+                                                height=200,
+                                                fit=ft.ImageFit.CONTAIN
+                                            ) if proof_b64 else ft.Text("Chưa có ảnh minh chứng", size=11,
+                                                                        color=self.gray),
+                                            on_click=lambda e, img=proof_b64: open_zoomable_image_popup(img),
+                                            tooltip="Chạm để phóng to ảnh"
+                                        ),
+
+                                        ft.Row(
+                                            alignment=ft.MainAxisAlignment.END,
+                                            spacing=8,
+                                            controls=[
+                                                ft.Container(
+                                                    on_click=lambda e, s=student, t=task: open_deny_popup(s, t),
+                                                    padding=ft.Padding(12, 6, 12, 6),
+                                                    bgcolor="#FEE2E2",
+                                                    border_radius=6,
+                                                    content=ft.Text("Từ chối", size=11, color=self.red,
+                                                                    weight=ft.FontWeight.BOLD)
+                                                ),
+                                                ft.Container(
+                                                    on_click=lambda e, s=student, t=task: approve_task(s, t),
+                                                    padding=ft.Padding(14, 6, 14, 6),
+                                                    bgcolor=self.green,
+                                                    border_radius=6,
+                                                    content=ft.Text("Duyệt", size=11, color="white",
+                                                                    weight=ft.FontWeight.BOLD)
+                                                )
+                                            ]
+                                        )
+                                    ]
+                                )
+                            )
+                            task_cards.append(card)
+
+        if not task_cards:
+            task_cards.append(
                 ft.Container(
                     padding=30,
-                    alignment=ft.alignment.Alignment(0, 0),
-                    content=ft.Text(
-                        "Không có phần việc nào cần nghiệm thu lúc này.",
-                        size=12,
-                        color=self.gray,
-                        text_align=ft.TextAlign.CENTER
-                    )
+                    alignment=ft.alignment.center,
+                    content=ft.Text("Hiện không có báo cáo nào cần nghiệm thu.", size=12, color=self.gray,
+                                    text_align=ft.TextAlign.CENTER)
                 )
             )
 
         list_content = ft.Column(
-            spacing=10,
-            scroll=ft.ScrollMode.AUTO,
-            controls=pending_cards
+            spacing=12,
+            controls=task_cards
         )
 
         body = ft.Column(
-            spacing=12,
+            spacing=10,
+            scroll=ft.ScrollMode.AUTO,
             controls=[
                 top_bar,
-                ft.Container(content=list_content, height=350)
+                ft.Container(height=4),
+                list_content
             ]
         )
 
@@ -1653,6 +2025,7 @@ class AppController:
 
         self.root.content = card_container
         self.page.update()
+
 
 
     # =========================
@@ -1781,99 +2154,215 @@ class AppController:
         # =========================
         # TRANG XEM LỚP HỌC (MAIN CLASS PAGE)
         # =========================
+
     def show_admin_classes(self):
-            self.load_data()
-            self.check_data()
+        """Displays grid of classes with toggleable details, independent scrolling list, and action buttons"""
+        self.load_data()
+        self.check_data()
 
-            top_bar = ft.Row(
+        top_bar = ft.Row(
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            controls=[
+                ft.Column(
+                    spacing=1,
+                    controls=[
+                        ft.Text("DANH SÁCH LỚP", size=15, weight=ft.FontWeight.BOLD, color=self.dark),
+                        ft.Text("Chọn một lớp để xem học sinh", size=11, color=self.gray)
+                    ]
+                ),
+                ft.Container(
+                    on_click=lambda e: self.show_admin_home(),
+                    padding=ft.Padding(10, 6, 10, 6),
+                    border_radius=8,
+                    bgcolor="#E2E8F0",
+                    content=ft.Text("Quay lại", size=11, color=self.dark, weight=ft.FontWeight.BOLD)
+                )
+            ]
+        )
+
+        # 1. Group students by normalized class name
+        default_classes = [f"A{i}" for i in range(1, 11)]
+        students_by_class = {c: [] for c in default_classes}
+
+        for student in self.students:
+            if not isinstance(student, dict):
+                continue
+
+            raw_class = str(student.get("class", "")).strip().upper()
+            if not raw_class:
+                raw_class = "KHÁC"
+
+            if raw_class not in students_by_class:
+                students_by_class[raw_class] = []
+
+            students_by_class[raw_class].append(student)
+
+        # Container for the detail view
+        detail_container_box = ft.Container(visible=False)
+        selected_class_state = {"current": None}
+
+        def view_class_students(class_name):
+            # TOGGLE OFF: If clicking the currently active class while box is visible
+            if selected_class_state["current"] == class_name and detail_container_box.visible:
+                detail_container_box.visible = False
+                detail_container_box.content = None
+                selected_class_state["current"] = None
+                self.page.update()
+                return
+
+            # TOGGLE ON / SWITCH CLASS
+            selected_class_state["current"] = class_name
+            student_list = students_by_class.get(class_name, [])
+
+            # Header without the student count indicator
+            header = ft.Row(
                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 controls=[
-                    ft.Column(
-                        spacing=1,
-                        controls=[
-                            ft.Text("DANH SÁCH LỚP", size=15, weight=ft.FontWeight.BOLD, color=self.dark),
-                            ft.Text("Chọn một lớp để xem học sinh", size=11, color=self.gray)
-                        ]
-                    ),
-                    ft.Container(
-                        on_click=lambda e: self.show_admin_home(),
-                        padding=ft.Padding(10, 6, 10, 6),
-                        border_radius=8,
-                        bgcolor="#E2E8F0",
-                        content=ft.Text("Quay lại", size=11, color=self.dark, weight=ft.FontWeight.BOLD)
-                    )
+                    ft.Text(f"Lớp {class_name}", size=13, weight=ft.FontWeight.BOLD, color=self.dark),
+                    ft.Text(f"Tổng điểm: {sum(st.get('score', 0) for st in student_list)}", size=11, color=self.blue,
+                            weight=ft.FontWeight.BOLD)
                 ]
             )
 
-            class_buttons = []
-            classes = [f"A{i}" for i in range(1, 11)]
-            for c in classes:
-                class_buttons.append(
+            # Scrollable student list container
+            student_items = []
+            if not student_list:
+                student_items.append(
                     ft.Container(
-                        content=ft.Text(c, weight=ft.FontWeight.BOLD, color="#7C3AED", size=14),
-                        alignment=ft.alignment.Alignment(0, 0),
-                        width=160,
-                        height=52,
-                        bgcolor="#F3E8FF",
-                        border_radius=12,
-                        on_click=lambda e, name=c: self.show_student_list(class_filter=name),
+                        padding=15,
+                        alignment=ft.alignment.center,
+                        content=ft.Text("Chưa có học sinh trong lớp này.", size=11, color=self.gray)
                     )
                 )
-
-            grid_rows = []
-            for i in range(0, len(class_buttons), 2):
-                grid_rows.append(
-                    ft.Row(
-                        controls=class_buttons[i:i + 2],
-                        alignment=ft.MainAxisAlignment.CENTER,
-                        spacing=12
+            else:
+                for st in student_list:
+                    student_items.append(
+                        ft.Container(
+                            padding=10,
+                            bgcolor="#FFFFFF",
+                            border_radius=8,
+                            border=ft.border.all(1, "#E2E8F0"),
+                            content=ft.Row(
+                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                controls=[
+                                    ft.Column(
+                                        spacing=2,
+                                        controls=[
+                                            ft.Text(st.get("name", "N/A"), size=12, weight=ft.FontWeight.BOLD,
+                                                    color=self.dark),
+                                            ft.Text(f"Mã: {st.get('id', 'N/A')}", size=10, color=self.gray)
+                                        ]
+                                    ),
+                                    ft.Container(
+                                        padding=ft.Padding(8, 4, 8, 4),
+                                        bgcolor="#F0FDF4",
+                                        border_radius=6,
+                                        content=ft.Text(f"{st.get('score', 0)} điểm", size=11, color=self.green,
+                                                        weight=ft.FontWeight.BOLD)
+                                    )
+                                ]
+                            )
+                        )
                     )
-                )
 
-            # Bottom buttons stay on the main class page ONLY
-            action_buttons = ft.Row(
-                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            # Scrollable view with fixed height
+            list_scroll_view = ft.Container(
+                content=ft.Column(
+                    controls=student_items,
+                    spacing=6,
+                    scroll=ft.ScrollMode.AUTO
+                ),
+                height=180
+            )
+
+            detail_container_box.content = ft.Column(
+                spacing=8,
                 controls=[
-                    ft.Container(
-                        on_click=lambda e: self.show_student_list(show_search_form=True),
-                        padding=ft.Padding(12, 10, 12, 10),
-                        border_radius=10,
-                        bgcolor=self.blue,
-                        expand=True,
-                        alignment=ft.alignment.Alignment(0, 0),
-                        content=ft.Text("Tìm học sinh", size=12, color="white", weight=ft.FontWeight.BOLD)
-                    ),
-                    ft.Container(width=8),
-                    ft.Container(
-                        on_click=lambda e: self.show_student_list(show_delete_form=True),
-                        padding=ft.Padding(12, 10, 12, 10),
-                        border_radius=10,
-                        bgcolor=self.red,
-                        expand=True,
-                        alignment=ft.alignment.Alignment(0, 0),
-                        content=ft.Text("Xoá tài khoản", size=12, color="white", weight=ft.FontWeight.BOLD)
-                    )
+                    header,
+                    ft.Divider(height=4, color="#E2E8F0"),
+                    list_scroll_view
                 ]
             )
+            detail_container_box.padding = 12
+            detail_container_box.bgcolor = "#F8FAFC"
+            detail_container_box.border = ft.border.all(1, "#CBD5E1")
+            detail_container_box.border_radius = 12
+            detail_container_box.visible = True
 
-            body = ft.Column(
-                controls=[
-                    top_bar,
-                    ft.Container(height=8),
-                    ft.Column(
-                        controls=grid_rows,
-                        spacing=10,
-                        scroll=ft.ScrollMode.AUTO
-                    ),
-                    ft.Container(height=10),
-                    action_buttons
-                ],
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER
-            )
-
-            self.root.content = self.card(body, 380)
             self.page.update()
+
+        # 2. Build Grid Buttons
+        grid_rows = []
+        all_class_keys = sorted(students_by_class.keys(),
+                                key=lambda x: (0, int(x[1:])) if x.startswith("A") and x[1:].isdigit() else (1, x))
+
+        row_controls = []
+        for i, c in enumerate(all_class_keys):
+            count = len(students_by_class[c])
+            btn = ft.Container(
+                on_click=lambda e, cls=c: view_class_students(cls),
+                padding=8,
+                bgcolor="#F3E8FF",
+                border_radius=10,
+                border=ft.border.all(1, "#D8B4FE"),
+                expand=True,
+                alignment=ft.alignment.center,
+                content=ft.Column(
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=2,
+                    controls=[
+                        ft.Text(c, weight=ft.FontWeight.BOLD, color="#7C3AED", size=13),
+                        ft.Text(f"{count} HS", size=9, color=self.gray)
+                    ]
+                )
+            )
+            row_controls.append(btn)
+
+            if len(row_controls) == 5 or i == len(all_class_keys) - 1:
+                grid_rows.append(ft.Row(controls=row_controls, spacing=8))
+                row_controls = []
+
+        # 3. Action Buttons (Finding & Delete Student)
+        action_buttons = ft.Row(
+            controls=[
+                ft.Container(
+                    on_click=lambda e: self.show_student_list(show_search=True),
+                    padding=ft.Padding(12, 10, 12, 10),
+                    border_radius=10,
+                    bgcolor=self.blue,
+                    expand=True,
+                    alignment=ft.alignment.center,
+                    content=ft.Text("Tìm học sinh", size=12, color="white", weight=ft.FontWeight.BOLD)
+                ),
+                ft.Container(
+                    on_click=lambda e: self.show_student_list(show_delete_form=True),
+                    padding=ft.Padding(12, 10, 12, 10),
+                    border_radius=10,
+                    bgcolor=self.red,
+                    expand=True,
+                    alignment=ft.alignment.center,
+                    content=ft.Text("Xoá tài khoản", size=12, color="white", weight=ft.FontWeight.BOLD)
+                )
+            ]
+        )
+
+        body = ft.Column(
+            spacing=10,
+            controls=[
+                top_bar,
+                ft.Container(height=4),
+                ft.Column(controls=grid_rows, spacing=8),
+                ft.Container(height=6),
+                detail_container_box,
+                ft.Container(height=6),
+                action_buttons
+            ]
+        )
+
+        self.root.content = self.card(body, 380)
+        self.page.update()
 
         # =========================
         # DANH SÁCH HỌC SINH CHI TIẾT (INDIVIDUAL CLASS VIEW)
@@ -2528,27 +3017,12 @@ class AppController:
                         self.root.content = self.card(results_content, 380)
                         self.page.update()
 
-                    # =========================
-                    # DANH SÁCH ĐĂNG KÝ
-                    # =========================
-
-                    # =========================
-                    # ADMIN: DANH SÁCH ĐĂNG KÍ (XÉT DUYỆT BÀI ĐĂNG KÍ)
-                    # =========================
-
-                    # =========================
-                    # ADMIN: DANH SÁCH ĐĂNG KÍ (XÉT DUYỆT BÀI ĐĂNG KÍ)
-                    # =========================
-
-                    # =========================
-                    # ADMIN: DANH SÁCH ĐĂNG KÍ (XÉT DUYỆT BÀI ĐĂNG KÍ)
-                    # =========================
-
-                    # =========================
-                    # ADMIN: DANH SÁCH ĐĂNG KÍ
-                    # =========================
+    # =========================
+    # DANH SÁCH ĐĂNG KÝ
+    # =========================
 
     def show_admin_registration_list(self):
+        """Admin approves/rejects pending job registrations before they move to 'in_progress'."""
         self.load_data()
         self.check_data()
 
@@ -2559,8 +3033,8 @@ class AppController:
                 ft.Column(
                     spacing=1,
                     controls=[
-                        ft.Text("DANH SÁCH ĐĂNG KÍ", size=15, weight=ft.FontWeight.BOLD, color=self.dark),
-                        ft.Text("Đang chờ xét duyệt", size=11, color=self.orange)
+                        ft.Text("DANH SÁCH ĐĂNG KÝ", size=15, weight=ft.FontWeight.BOLD, color=self.dark),
+                        ft.Text("Duyệt học sinh đăng ký công việc", size=11, color=self.gray)
                     ]
                 ),
                 ft.Container(
@@ -2573,104 +3047,79 @@ class AppController:
             ]
         )
 
-        pending_cards = []
-
-        def approve_application(student, task):
-            # Locate the exact task inside student["tasks"] to ensure the reference updates
+        def approve_registration(student, task):
+            """Approve registration: Updates status to 'in_progress' inside student's tasks list"""
             for t in student.get("tasks", []):
-                if t.get("job") == task.get("job"):
+                if t.get("job") == task.get("job") and t.get("status") in ["pending_registration", "Chờ xét duyệt"]:
                     t["status"] = "in_progress"
                     break
 
             self.save_data()
-            self.show_message(f"Đã duyệt phần việc cho học sinh {student.get('name')}")
+            self.show_message(f"Đã duyệt đăng ký cho {student.get('name')}!")
             self.show_admin_registration_list()
 
-        def open_reject_page(student, task):
-            self.show_reject_reason_page(student, task)
+        def deny_registration(student, task):
+            """Deny registration: Removes task request from student's tasks"""
+            if "tasks" in student and task in student["tasks"]:
+                student["tasks"].remove(task)
+            self.save_data()
+            self.show_message(f"Đã từ chối đăng ký của {student.get('name')}!")
+            self.show_admin_registration_list()
 
+        pending_cards = []
         for student in self.students:
-            if not isinstance(student, dict) or "tasks" not in student:
-                continue
-
-            tasks = student.get("tasks", [])
-            if not isinstance(tasks, list):
-                continue
-
-            for task in tasks:
-                if not isinstance(task, dict):
-                    continue
-
-                status = task.get("status")
-                if status in ["pending_registration", "Chờ xét duyệt"]:
-                    st_name = student.get("name", "N/A")
-                    st_class = student.get("class", "")
-                    st_id = student.get("id", "")
-
-                    card = ft.Container(
-                        padding=12,
-                        bgcolor="#FFF7ED",
-                        border=ft.Border(
-                            top=ft.BorderSide(1, "#FDBA74"),
-                            bottom=ft.BorderSide(1, "#FDBA74"),
-                            left=ft.BorderSide(1, "#FDBA74"),
-                            right=ft.BorderSide(1, "#FDBA74"),
-                        ),
-                        border_radius=12,
-                        content=ft.Column(
-                            spacing=6,
-                            controls=[
-                                ft.Row(
-                                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                    controls=[
-                                        ft.Text(f"{st_name} ({st_id})", size=12, weight=ft.FontWeight.BOLD,
-                                                color=self.dark),
-                                        ft.Container(
-                                            padding=ft.Padding(6, 2, 6, 2),
-                                            bgcolor="#FFEDD5",
-                                            border_radius=6,
-                                            content=ft.Text(f"Lớp {st_class}", size=10, color=self.orange,
-                                                            weight=ft.FontWeight.BOLD)
-                                        )
-                                    ]
-                                ),
-                                ft.Text(f"📌 Công việc: {task.get('job', '')}", size=11, color=self.dark,
-                                        weight=ft.FontWeight.W_500),
-                                ft.Text(f"⏱️ Thời gian: {task.get('time', '')}", size=11, color=self.gray),
-                                ft.Text(f"📝 Ghi chú: {task.get('note', 'Không có')}", size=11, color=self.gray),
-                                ft.Container(height=4),
-                                ft.Row(
-                                    alignment=ft.MainAxisAlignment.END,
-                                    spacing=8,
-                                    controls=[
-                                        ft.ElevatedButton(
-                                            "Từ chối",
-                                            bgcolor=self.red,
-                                            color="white",
-                                            style=ft.ButtonStyle(padding=ft.Padding(10, 4, 10, 4)),
-                                            on_click=lambda e, s=student, t=task: open_reject_page(s, t)
-                                        ),
-                                        ft.ElevatedButton(
-                                            "Duyệt",
-                                            bgcolor=self.green,
-                                            color="white",
-                                            style=ft.ButtonStyle(padding=ft.Padding(10, 4, 10, 4)),
-                                            on_click=lambda e, s=student, t=task: approve_application(s, t)
-                                        )
-                                    ]
-                                )
-                            ]
+            if isinstance(student, dict) and "tasks" in student and isinstance(student["tasks"], list):
+                for task in student["tasks"]:
+                    if isinstance(task, dict) and task.get("status") in ["pending_registration", "Chờ xét duyệt"]:
+                        card = ft.Container(
+                            padding=12,
+                            bgcolor="#F8FAFC",
+                            border=ft.border.all(1, "#CBD5E1"),
+                            border_radius=10,
+                            content=ft.Column(
+                                spacing=6,
+                                controls=[
+                                    ft.Row(
+                                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                        controls=[
+                                            ft.Text(f"{student.get('name')} ({student.get('class')})", size=12, weight=ft.FontWeight.BOLD, color=self.dark),
+                                            ft.Text(f"Mã HS: {student.get('id')}", size=10, color=self.gray)
+                                        ]
+                                    ),
+                                    ft.Text(f"Công việc: {task.get('job')}", size=11, color=self.dark, weight=ft.FontWeight.W_500),
+                                    ft.Text(f"Thời gian: {task.get('time')}", size=10, color=self.gray),
+                                    ft.Container(height=4),
+                                    ft.Row(
+                                        alignment=ft.MainAxisAlignment.END,
+                                        spacing=6,
+                                        controls=[
+                                            ft.Container(
+                                                on_click=lambda e, s=student, t=task: deny_registration(s, t),
+                                                padding=ft.Padding(10, 6, 10, 6),
+                                                bgcolor=self.red,
+                                                border_radius=6,
+                                                content=ft.Text("Từ chối", size=11, color="white", weight=ft.FontWeight.BOLD)
+                                            ),
+                                            ft.Container(
+                                                on_click=lambda e, s=student, t=task: approve_registration(s, t),
+                                                padding=ft.Padding(10, 6, 10, 6),
+                                                bgcolor=self.blue,
+                                                border_radius=6,
+                                                content=ft.Text("Chấp nhận", size=11, color="white", weight=ft.FontWeight.BOLD)
+                                            )
+                                        ]
+                                    )
+                                ]
+                            )
                         )
-                    )
-                    pending_cards.append(card)
+                        pending_cards.append(card)
 
         if not pending_cards:
             pending_cards.append(
                 ft.Container(
                     padding=30,
-                    alignment=ft.alignment.Alignment(0, 0),
-                    content=ft.Text("Hiện không có đơn đăng kí nào cần duyệt.", size=12, color=self.gray,
-                                    text_align=ft.TextAlign.CENTER)
+                    alignment=ft.alignment.center,
+                    content=ft.Text("Không có yêu cầu đăng ký nào cần duyệt.", size=12, color=self.gray, text_align=ft.TextAlign.CENTER)
                 )
             )
 
@@ -2700,9 +3149,9 @@ class AppController:
         self.root.content = card_container
         self.page.update()
 
-        # =========================
-        # ADMIN: TRANG NHẬP LÝ DO TỪ CHỐI
-        # =========================
+    # =========================
+    # ADMIN: TRANG NHẬP LÝ DO TỪ CHỐI
+    # =========================
 
     def show_reject_reason_page(self, student, task):
         st_name = student.get("name", "N/A")
@@ -2739,7 +3188,7 @@ class AppController:
 
         reason_field = ft.TextField(
             label="Lý do từ chối",
-            hint_text="Ghi rõ lý do từ chối để học sinh biết...",
+            hint_text="Ghi rõ lý do từ chối",
             multiline=True,
             min_lines=3,
             max_lines=5,
@@ -2899,6 +3348,8 @@ class AppController:
             # 2. DEFINITION OF sliding_board (Must be BEFORE body!)
             sliding_board = ft.Row(
                 controls=[
+                    feature_card("Thông tin học sinh", "👤", "#6366F1", "#EEF2FF",
+                                 lambda e: self.show_message(f"Họ tên: {user_name}\nLớp: {user_class}\nID: {user_id}")),
                     feature_card("Phần việc đăng kí", "📝", self.blue, "#EFF6FF",
                                  lambda e: self.show_job_registration()),
                     feature_card("Tiến trình rèn luyện", "📈", self.orange, "#FFF7ED",
@@ -2907,8 +3358,6 @@ class AppController:
                                  lambda e: self.show_student_completed_tasks()),
                     feature_card("Lỗi vi phạm", "⚠️", self.red, "#FEF2F2",
                                  lambda e: self.show_message("Chức năng Lỗi vi phạm")),
-                    feature_card("Thông tin học sinh", "👤", "#6366F1", "#EEF2FF",
-                                 lambda e: self.show_message(f"Họ tên: {user_name}\nLớp: {user_class}\nID: {user_id}")),
                 ],
                 scroll=ft.ScrollMode.AUTO,
                 spacing=10
@@ -3122,99 +3571,419 @@ class AppController:
 
         self.root.content = card_container
         self.page.update()
-
-    # =========================
+        # =========================
     # MÀN HÌNH TIẾN TRÌNH HỌC SINH
     # =========================
     def show_student_progress(self):
+        """Displays ongoing tasks assigned to current student with fixed FilePicker and original card layout"""
+        self.load_data()
+        self.check_data()
+
         if not self.current_user:
-            self.show_role_select()
+            self.show_login()
             return
 
         top_bar = ft.Row(
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
             controls=[
-                ft.IconButton(
-                    icon=ft.icons.ARROW_BACK,
-                    icon_color=self.dark,
-                    on_click=lambda e: self.show_student_home()
+                ft.Column(
+                    spacing=1,
+                    controls=[
+                        ft.Text("TIẾN TRÌNH RÈN LUYỆN", size=15, weight=ft.FontWeight.BOLD, color=self.dark),
+                        ft.Text("Nhiệm vụ đang thực hiện", size=11, color=self.gray)
+                    ]
                 ),
-                ft.Text("Tiến trình rèn luyện", size=18, weight=ft.FontWeight.BOLD, color=self.dark)
-            ],
-            alignment=ft.MainAxisAlignment.START
+                ft.Container(
+                    on_click=lambda e: self.show_student_home(),
+                    padding=ft.Padding(10, 6, 10, 6),
+                    border_radius=8,
+                    bgcolor="#E2E8F0",
+                    content=ft.Text("Quay lại", size=11, color=self.dark, weight=ft.FontWeight.BOLD)
+                )
+            ]
         )
 
-        tasks = self.current_user.get("tasks") or []
-        task_controls = []
+        instruction_text = ft.Text(
+            "Phần việc đã đăng kí sẽ được gửi về đây, chụp ảnh ở nơi phần việc để gửi báo cáo.",
+            size=11,
+            color=self.gray,
+            italic=True
+        )
 
-        if not tasks:
-            task_controls.append(
-                ft.Text("Hiện chưa có nhiệm vụ nào được giao.", size=13, color=self.gray)
+        current_student = None
+        for s in self.students:
+            if isinstance(s, dict) and s.get("id") == self.current_user.get("id"):
+                current_student = s
+                break
+
+        task_cards = []
+
+        def submit_report(task_obj, b64_img):
+            if not b64_img:
+                self.show_message("Vui lòng chọn hoặc chụp ảnh minh chứng trước khi gửi!")
+                return
+
+            task_obj["proof_image"] = b64_img
+            task_obj["status"] = "pending_approval"
+            self.save_data()
+            self.show_message("Đã gửi báo cáo minh chứng thành công! Chờ Admin nghiệm thu.")
+            self.show_student_progress()
+
+        def open_zoomable_image_popup(b64_data):
+            """Opens a popup modal with zoom controls and smooth drag-to-pan functionality."""
+            if not b64_data:
+                return
+
+            clean_b64 = b64_data.split(",")[-1] if "," in b64_data else b64_data
+
+            state = {
+                "scale": 1.0,
+                "x": 0.0,
+                "y": 0.0
+            }
+
+            image_ctrl = ft.Image(
+                src_base64=clean_b64,
+                fit=ft.ImageFit.CONTAIN,
+                width=320,
+                height=320,
+                scale=1.0,
+                offset=ft.Offset(0, 0)
             )
-        else:
-            for idx, task in enumerate(tasks):
-                task_title = task.get("title", f"Nhiệm vụ {idx + 1}")
-                task_date = task.get("date", "Chưa cập nhật")
-                is_completed = task.get("status") == "completed"
 
-                status_tag = ft.Container(
-                    content=ft.Text(
-                        "Đã hoàn thành" if is_completed else "Chưa nộp",
-                        size=11,
-                        color=self.white,
-                        weight=ft.FontWeight.BOLD
-                    ),
-                    bgcolor=self.green if is_completed else self.orange,
-                    padding=ft.padding.symmetric(horizontal=8, vertical=4),
-                    border_radius=6
-                )
+            image_container = ft.Container(
+                content=image_ctrl,
+                alignment=ft.alignment.center,
+                clip_behavior=ft.ClipBehavior.HARD_EDGE,
+                width=320,
+                height=320
+            )
 
-                card_item = ft.Container(
+            def update_transform():
+                image_ctrl.scale = state["scale"]
+                image_ctrl.offset = ft.Offset(state["x"], state["y"])
+                zoom_text.value = f"{int(state['scale'] * 100)}%"
+                self.page.update()
+
+            def zoom_in(e):
+                if state["scale"] < 5.0:
+                    state["scale"] += 0.25
+                    update_transform()
+
+            def zoom_out(e):
+                if state["scale"] > 0.5:
+                    state["scale"] -= 0.25
+                    if state["scale"] <= 1.0:
+                        state["x"] = 0.0
+                        state["y"] = 0.0
+                    update_transform()
+
+            def reset_zoom(e):
+                state["scale"] = 1.0
+                state["x"] = 0.0
+                state["y"] = 0.0
+                update_transform()
+
+            def on_scroll(e: ft.ScrollEvent):
+                if e.scroll_delta_y < 0:
+                    zoom_in(None)
+                else:
+                    zoom_out(None)
+
+            def on_pan_update(e: ft.DragUpdateEvent):
+                state["x"] += e.delta_x / 200.0
+                state["y"] += e.delta_y / 200.0
+                update_transform()
+
+            def close_dlg(e):
+                dialog.open = False
+                self.page.update()
+
+            zoom_text = ft.Text("100%", size=11, weight=ft.FontWeight.BOLD, color=self.gray)
+
+            gesture_wrapper = ft.GestureDetector(
+                content=image_container,
+                on_scroll=on_scroll,
+                on_pan_update=on_pan_update,
+                drag_interval=10
+            )
+
+            dialog = ft.AlertDialog(
+                content_padding=10,
+                content=ft.Container(
+                    width=340,
+                    height=420,
                     content=ft.Column(
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                         controls=[
+                            gesture_wrapper,
                             ft.Row(
+                                alignment=ft.MainAxisAlignment.CENTER,
+                                spacing=6,
                                 controls=[
-                                    ft.Text(task_title, size=14, weight=ft.FontWeight.BOLD, color=self.dark, expand=True),
-                                    status_tag
-                                ],
-                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN
-                            ),
-                            ft.Text(f"Ngày đăng ký: {task_date}", size=12, color=self.gray),
-                            ft.Container(height=8),
-
-                            # Khung chọn & xem ảnh minh chứng
-                            self.build_upload_box(),
-
-                            ft.Container(height=8),
-                            ft.ElevatedButton(
-                                "Nộp Minh Chứng",
-                                width=280,
-                                height=40,
-                                bgcolor=self.blue if self.temp_image_base64 else self.gray,
-                                color=self.white,
-                                on_click=lambda e, t_idx=idx: self.submit_proof(t_idx)
+                                    ft.IconButton(
+                                        icon=ft.icons.REMOVE_CIRCLE_OUTLINED,
+                                        icon_size=20,
+                                        tooltip="Thu nhỏ",
+                                        on_click=zoom_out
+                                    ),
+                                    zoom_text,
+                                    ft.IconButton(
+                                        icon=ft.icons.ADD_CIRCLE_OUTLINED,
+                                        icon_size=20,
+                                        tooltip="Phóng to",
+                                        on_click=zoom_in
+                                    ),
+                                    ft.IconButton(
+                                        icon=ft.icons.REFRESH_OUTLINED,
+                                        icon_size=18,
+                                        tooltip="Đặt lại",
+                                        on_click=reset_zoom
+                                    ),
+                                    ft.Container(width=10),
+                                    ft.TextButton("Đóng", on_click=close_dlg)
+                                ]
                             )
-                        ],
-                        spacing=4
-                    ),
-                    padding=16,
-                    border=ft.border.all(1, "#E2E8F0"),
-                    border_radius=12,
-                    bgcolor="#F8FAFC"
+                        ]
+                    )
                 )
-                task_controls.append(card_item)
+            )
+            self.page.dialog = dialog
+            dialog.open = True
+            self.page.update()
+
+        if current_student and "tasks" in current_student and isinstance(current_student["tasks"], list):
+            for task in current_student["tasks"]:
+                if isinstance(task, dict):
+                    status = task.get("status", "in_progress")
+
+                    # Include tasks with status: in_progress, pending_registration, pending_approval
+                    if status in ["in_progress", "pending_registration", "pending_approval", "pending_approve"]:
+
+                        # Determine status text and block actions when pending
+                        if status == "pending_registration":
+                            status_text = "Đang phê duyệt"
+                            status_color = self.orange
+                            status_bg = "#FEF3C7"
+                            is_blocked = True
+                        elif status in ["pending_approval", "pending_approve"]:
+                            status_text = "Đã gửi báo cáo! Đang chờ xác nhận..."
+                            status_color = self.orange
+                            status_bg = "#FEF3C7"
+                            is_blocked = True
+                        else:  # in_progress
+                            status_text = "Đang thực hiện"
+                            status_color = self.blue
+                            status_bg = "#EFF6FF"
+                            is_blocked = False
+
+                        # Target image container for explicit updating
+                        active_b64 = task.get("proof_image", "")
+
+                        preview_img = ft.Image(
+                            src_base64=active_b64 if active_b64 else None,
+                            width=330,
+                            height=220,
+                            fit=ft.ImageFit.CONTAIN,
+                            visible=bool(active_b64)
+                        )
+
+                        # Wrap preview in a clickable container to open zoom popup
+                        preview_container = ft.Container(
+                            content=preview_img,
+                            on_click=lambda e, t=task: open_zoomable_image_popup(t.get("proof_image", "")),
+                            tooltip="Chạm để phóng to ảnh"
+                        )
+
+                        placeholder_box = ft.Container(
+                            width=330,
+                            height=120,
+                            bgcolor="#F8FAFC",
+                            border_radius=8,
+                            border=ft.border.all(1, "#E2E8F0"),
+                            alignment=ft.alignment.center,
+                            visible=not bool(active_b64),
+                            content=ft.Column(
+                                alignment=ft.MainAxisAlignment.CENTER,
+                                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                                spacing=4,
+                                controls=[
+                                    ft.Text("📷", size=26),
+                                    ft.Text("Chưa có ảnh minh chứng", size=10, color=self.gray)
+                                ]
+                            )
+                        )
+
+                        # Dynamic FilePicker Handler tied to this specific task item
+                        def create_picker_and_bind(t=task, img_ctrl=preview_img, box_ctrl=placeholder_box):
+
+                            def _process_and_update(raw_bytes):
+                                with Image.open(io.BytesIO(raw_bytes)) as img:
+                                    img.thumbnail((800, 800))
+                                    buffer = io.BytesIO()
+                                    img.save(buffer, format="JPEG", quality=70)
+                                    b64_str = base64.b64encode(buffer.getvalue()).decode("utf-8")
+
+                                    # Update state & UI controls
+                                    t["proof_image"] = b64_str
+                                    img_ctrl.src_base64 = b64_str
+                                    img_ctrl.visible = True
+                                    box_ctrl.visible = False
+                                    self.page.update()
+
+                            def on_file_picked(e: ft.FilePickerResultEvent):
+                                if not e.files or len(e.files) == 0:
+                                    return
+
+                                selected_file = e.files[0]
+
+                                if selected_file.path and os.path.exists(selected_file.path):
+                                    with open(selected_file.path, "rb") as f:
+                                        raw_bytes = f.read()
+                                    _process_and_update(raw_bytes)
+                                else:
+                                    upload_url = self.page.get_upload_url(selected_file.name, 600)
+                                    picker.upload([
+                                        ft.FilePickerUploadFile(selected_file.name, upload_url=upload_url)
+                                    ])
+
+                            def on_upload_complete(e: ft.FilePickerUploadEvent):
+                                if e.progress == 1.0:
+                                    uploaded_path = os.path.join("uploads", e.file_name)
+                                    with open(uploaded_path, "rb") as f:
+                                        raw_bytes = f.read()
+                                    _process_and_update(raw_bytes)
+
+                            picker = ft.FilePicker(on_result=on_file_picked, on_upload=on_upload_complete)
+                            self.page.overlay.append(picker)
+                            return picker
+
+                        fp = create_picker_and_bind()
+
+                        # ORIGINAL Task Card Layout (Preserved without layout modifications)
+                        card = ft.Container(
+                            padding=14,
+                            bgcolor="#FFFFFF",
+                            border=ft.border.all(1, "#E2E8F0"),
+                            border_radius=12,
+                            shadow=ft.BoxShadow(blur_radius=6, offset=ft.Offset(0, 2)),
+                            content=ft.Column(
+                                spacing=10,
+                                controls=[
+                                    # Top Row: Job Title & Status
+                                    ft.Row(
+                                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                        controls=[
+                                            ft.Text(f"{task.get('job', 'N/A')}", size=13, weight=ft.FontWeight.BOLD,
+                                                    color=self.dark),
+                                            ft.Container(
+                                                padding=ft.Padding(8, 4, 8, 4),
+                                                bgcolor=status_bg,
+                                                border_radius=6,
+                                                content=ft.Text(status_text, size=10, color=status_color,
+                                                                weight=ft.FontWeight.BOLD)
+                                            )
+                                        ]
+                                    ),
+                                    # Task Details
+                                    ft.Column(
+                                        spacing=2,
+                                        controls=[
+                                            ft.Text(f"⏱ Thời gian: {task.get('time', 'N/A')}", size=11, color=self.gray),
+                                            ft.Text(f"📝 Ghi chú: {task.get('note', 'Không có')}", size=11, color=self.dark)
+                                        ]
+                                    ),
+
+                                    ft.Divider(height=1, color="#F1F5F9"),
+
+                                    # Image Preview Box & Buttons
+                                    ft.Column(
+                                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                                        spacing=8,
+                                        controls=[
+                                            placeholder_box,
+                                            preview_container,
+                                            ft.Row(
+                                                alignment=ft.MainAxisAlignment.CENTER,
+                                                spacing=8,
+                                                controls=[
+                                                    ft.Container(
+                                                        on_click=None if is_blocked else (lambda e, picker=fp: picker.pick_files(
+                                                            allow_multiple=False,
+                                                            allowed_extensions=["png", "jpg", "jpeg"]
+                                                        )),
+                                                        padding=ft.Padding(12, 6, 12, 6),
+                                                        bgcolor="#E2E8F0" if is_blocked else "#E0F2FE",
+                                                        border_radius=6,
+                                                        content=ft.Row(
+                                                            spacing=4,
+                                                            controls=[
+                                                                ft.Text("📁", size=11),
+                                                                ft.Text("Chọn ảnh", size=11, color=self.gray if is_blocked else self.blue,
+                                                                        weight=ft.FontWeight.BOLD)
+                                                            ]
+                                                        )
+                                                    ),
+                                                    ft.Container(
+                                                        on_click=None if is_blocked else (lambda e, t=task: submit_report(t,
+                                                                                                 t.get("proof_image", ""))),
+                                                        padding=ft.Padding(14, 6, 14, 6),
+                                                        bgcolor=self.gray if is_blocked else self.green,
+                                                        border_radius=6,
+                                                        content=ft.Text("Gửi báo cáo", size=11, color="white",
+                                                                        weight=ft.FontWeight.BOLD)
+                                                    )
+                                                ]
+                                            )
+                                        ]
+                                    )
+                                ]
+                            )
+                        )
+                        task_cards.append(card)
+
+        if not task_cards:
+            task_cards.append(
+                ft.Container(
+                    padding=30,
+                    alignment=ft.alignment.center,
+                    content=ft.Text("Bạn chưa có công việc nào đang thực hiện.", size=12, color=self.gray,
+                                    text_align=ft.TextAlign.CENTER)
+                )
+            )
+
+        list_content = ft.Column(
+            spacing=12,
+            controls=task_cards
+        )
 
         body = ft.Column(
+            spacing=10,
+            scroll=ft.ScrollMode.AUTO,
             controls=[
                 top_bar,
-                ft.Container(height=10),
-                *task_controls
-            ],
-            spacing=10,
-            scroll=ft.ScrollMode.AUTO
+                instruction_text,
+                ft.Container(height=4),
+                list_content
+            ]
         )
 
-        self.root.content = self.card(body)
+        card_container = ft.Container(
+            content=body,
+            width=380,
+            padding=20,
+            bgcolor=self.white,
+            border_radius=15,
+            shadow=ft.BoxShadow(blur_radius=15, offset=ft.Offset(0, 5))
+        )
+
+        self.root.content = card_container
         self.page.update()
+
+    show_student_process = show_student_progress
+
 
     # =========================
     # LÀM MỚI DỮ LIỆU

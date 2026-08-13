@@ -1,47 +1,18 @@
 [
-    {
-        "class": "A1",
-        "id": "HS01A1",
-        "name": "1",
-        "password": "1",
-        "score": 10,
-        "tasks": [
-            {
-                "job": "test2",
-                "note": "test2",
-                "status": "in_progress",
-                "time": "test2"
-            }
-        ]
-    },
-    {
-        "class": "A2",
-        "id": "HS01A2",
-        "name": "2",
-        "password": "2",
-        "score": 10,
-        "tasks": [
-            {
-                "job": "test",
-                "note": "test",
-                "status": "in_progress",
-                "time": "test"
-            }
-        ]
-    },
-    {
-        "class": "A3",
-        "id": "HS01A3",
-        "name": "3",
-        "password": "3",
-        "score": 0,
-        "tasks": [
-            {
-                "job": "image test",
-                "note": "test",
-                "status": "in_progress",
-                "time": "test"
-            }
-        ]
-    }
+  {
+    "class": "A1",
+    "id": "HS01A1",
+    "name": "1",
+    "password": "1",
+    "score": 20,
+    "tasks": []
+  },
+  {
+    "class": "A1",
+    "id": "HS02A1",
+    "name": "1`2",
+    "password": "1",
+    "score": 20,
+    "tasks": []
+  }
 ]

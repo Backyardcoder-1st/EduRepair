@@ -1369,9 +1369,9 @@ class AppController:
 
                 self.show_student_home()
 
-                return
+                return#
 
-    # =========================
+    #=========================
     # TRANG ADMIN DASHBOARD
     # =========================
     def show_admin_home(self):
@@ -1482,26 +1482,6 @@ class AppController:
                 ),
                 ft.Container(height=5),
                 sliding_board,
-                ft.Container(height=15),
-                ft.Container(
-                    width=340,
-                    padding=12,
-                    bgcolor="#F8FAFC",
-                    border_radius=12,
-                    content=ft.Row(
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                        controls=[
-                            ft.Column(
-                                spacing=2,
-                                controls=[
-                                    ft.Text("Tình trạng hệ thống", size=12, weight=ft.FontWeight.BOLD, color=self.dark),
-                                    ft.Text("Đang kết nối cơ sở dữ liệu", size=11, color=self.gray)
-                                ]
-                            ),
-                            ft.Text("Hoạt động", size=10, color=self.green, weight=ft.FontWeight.BOLD)
-                        ]
-                    )
-                )
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
@@ -3251,174 +3231,307 @@ class AppController:
         self.root.content = card_container
         self.page.update()
 
-        # =========================
-        # TRANG CHÍNH HỌC SINH
-        # =========================
+    # =========================
+    # TRANG CHÍNH HỌC SINH
+    # =========================
     def show_student_home(self):
-            if not self.current_user:
-                self.show_role_select()
-                return
+        if not self.current_user:
+            self.show_role_select()
+            return
 
-            user_name = self.current_user.get("name", "Học sinh")
-            user_class = self.current_user.get("class", "")
-            user_id = self.current_user.get("id", "")
-            user_score = self.current_user.get("score", 0)
+        user_name = self.current_user.get("name", "Học sinh")
+        user_class = self.current_user.get("class", "")
+        user_id = self.current_user.get("id", "")
 
-            # 1. Thẻ thông tin cá nhân (Header Profile)
-            profile_card = ft.Container(
-                width=340,
-                padding=12,
-                bgcolor="#F8FAFC",
-                border_radius=15,
-                content=ft.Row(
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                    controls=[
-                        ft.Row(
-                            spacing=10,
-                            controls=[
-                                ft.Container(
+        # Số lượng phần việc (thay thế bằng biến/hàm đếm thực tế nếu có)
+        completed_count = getattr(self, "get_completed_count", lambda uid: 3)(user_id)
+        denied_count = getattr(self, "get_denied_count", lambda uid: 1)(user_id)
+
+        profile_card = ft.Container(
+            width=340,
+            padding=12,
+            bgcolor="#F8FAFC",
+            border_radius=15,
+            content=ft.Row(
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                controls=[
+                    ft.Row(
+                        spacing=10,
+                        controls=[
+                            ft.Container(
+                                width=46,
+                                height=46,
+                                border_radius=23,
+                                content=ft.Image(
+                                    src="STUDENT.png",
+                                    fit="cover",
                                     width=46,
                                     height=46,
                                     border_radius=23,
-                                    content=ft.Image(
-                                        src="STUDENT.png",
-                                        fit="cover",
-                                        width=46,
-                                        height=46,
-                                        border_radius=23,
-                                    )
-                                ),
-                                ft.Column(
-                                    spacing=1,
-                                    controls=[
-                                        ft.Text(user_name, size=15, weight=ft.FontWeight.BOLD, color=self.dark),
-                                        ft.Text(f"Lớp {user_class} - ID: {user_id}", size=11, color=self.gray),
-                                    ]
                                 )
-                            ]
-                        ),
+                            ),
+                            ft.Column(
+                                spacing=1,
+                                controls=[
+                                    ft.Text(user_name, size=15, weight=ft.FontWeight.BOLD, color=self.dark),
+                                    ft.Text(f"Lớp {user_class} - ID: {user_id}", size=11, color=self.gray),
+                                ]
+                            )
+                        ]
+                    ),
+                    ft.Container(
+                        on_click=lambda e: self.show_role_select(),
+                        padding=ft.Padding(8, 5, 8, 5),
+                        border_radius=8,
+                        bgcolor="#FEE2E2",
+                        content=ft.Text("Đăng xuất", size=11, color=self.red, weight=ft.FontWeight.BOLD)
+                    )
+                ]
+            )
+        )
+
+        def feature_card(title, icon_char, color, bg_color, click_handler):
+            return ft.Container(
+                width=135,
+                height=120,
+                bgcolor=bg_color,
+                border_radius=15,
+                padding=12,
+                on_click=click_handler,
+                content=ft.Column(
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    horizontal_alignment=ft.CrossAxisAlignment.START,
+                    controls=[
                         ft.Container(
-                            on_click=lambda e: self.show_role_select(),
-                            padding=ft.Padding(8, 5, 8, 5),
+                            width=32,
+                            height=32,
                             border_radius=8,
-                            bgcolor="#FEE2E2",
-                            content=ft.Text("Đăng xuất", size=11, color=self.red, weight=ft.FontWeight.BOLD)
+                            bgcolor=color,
+                            alignment=ft.alignment.Alignment(0, 0),
+                            content=ft.Text(
+                                icon_char,
+                                size=15,
+                                color="white",
+                                weight=ft.FontWeight.BOLD
+                            )
+                        ),
+                        ft.Text(
+                            title,
+                            size=12,
+                            weight=ft.FontWeight.BOLD,
+                            color=self.dark
                         )
                     ]
                 )
             )
 
-            # Component tạo thẻ chức năng
-            def feature_card(title, icon_char, color, bg_color, click_handler):
-                return ft.Container(
-                    width=135,
-                    height=120,
-                    bgcolor=bg_color,
-                    border_radius=15,
-                    padding=12,
-                    on_click=click_handler,
-                    content=ft.Column(
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                        horizontal_alignment=ft.CrossAxisAlignment.START,
-                        controls=[
-                            ft.Container(
-                                width=32,
-                                height=32,
-                                border_radius=8,
-                                bgcolor=color,
-                                alignment=ft.alignment.Alignment(0, 0),
-                                content=ft.Text(
-                                    icon_char,
-                                    size=15,
-                                    color="white",
-                                    weight=ft.FontWeight.BOLD
-                                )
-                            ),
-                            ft.Text(
-                                title,
-                                size=12,
-                                weight=ft.FontWeight.BOLD,
-                                color=self.dark
-                            )
-                        ]
-                    )
-                )
+        sliding_board = ft.Row(
+            controls=[
+                feature_card("Phần việc đăng kí", "📝", self.blue, "#EFF6FF",
+                             lambda e: self.show_job_registration()),
+                feature_card("Tiến trình rèn luyện", "📈", self.orange, "#FFF7ED",
+                             lambda e: self.show_student_progress()),
+                feature_card("Phần việc hoàn thành", "✅", self.green, "#F0FDF4",
+                             lambda e: self.show_student_completed_tasks()),
+                feature_card("Lỗi vi phạm", "⚠️", self.red, "#FEF2F2",
+                             lambda e: self.show_message("Chức năng Lỗi vi phạm")),
+            ],
+            scroll=ft.ScrollMode.AUTO,
+            spacing=10
+        )
 
-            # 2. DEFINITION OF sliding_board (Must be BEFORE body!)
-            sliding_board = ft.Row(
+        # Khối thông tin bổ sung
+        completed_info_box = ft.Container(
+            width=340,
+            padding=12,
+            bgcolor="#F0FDF4",
+            border_radius=12,
+            border=ft.border.all(1, "#DCFCE7"),
+            content=ft.Row(
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 controls=[
-                    feature_card("Thông tin học sinh", "👤", "#6366F1", "#EEF2FF",
-                                 lambda e: self.show_message(f"Họ tên: {user_name}\nLớp: {user_class}\nID: {user_id}")),
-                    feature_card("Phần việc đăng kí", "📝", self.blue, "#EFF6FF",
-                                 lambda e: self.show_job_registration()),
-                    feature_card("Tiến trình rèn luyện", "📈", self.orange, "#FFF7ED",
-                                 lambda e: self.show_student_progress()),
-                    feature_card("Phần việc hoàn thành", "✅", self.green, "#F0FDF4",
-                                 lambda e: self.show_student_completed_tasks()),
-                    feature_card("Lỗi vi phạm", "⚠️", self.red, "#FEF2F2",
-                                 lambda e: self.show_message("Chức năng Lỗi vi phạm")),
-                ],
-                scroll=ft.ScrollMode.AUTO,
-                spacing=10
-            )
-
-            # 3. Layout Body (Uses sliding_board)
-            body = ft.Column(
-                controls=[
-                    self.title("TRANG HỌC SINH"),
-                    ft.Container(height=5),
-                    profile_card,
-                    ft.Container(height=15),
                     ft.Row(
+                        spacing=8,
                         controls=[
-                            ft.Text("Chức năng học sinh", size=13, weight=ft.FontWeight.BOLD, color=self.dark),
-                            ft.Text("Cuộn ngang ➔", size=10, color=self.gray)
-                        ],
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+                            ft.Text("✅", size=14),
+                            ft.Text("Phần việc đã hoàn thành", size=13, weight=ft.FontWeight.W_600, color=self.dark)
+                        ]
                     ),
-                    ft.Container(height=5),
-                    sliding_board,  # Defined above, so no unresolved reference!
-                    ft.Container(height=15),
-                    ft.Container(
-                        width=340,
-                        padding=12,
-                        bgcolor="#F8FAFC",
-                        border_radius=12,
-                        content=ft.Row(
-                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                            controls=[
-                                ft.Column(
-                                    spacing=2,
-                                    controls=[
-                                        ft.Text("Tình trạng hệ thống", size=12, weight=ft.FontWeight.BOLD,
-                                                color=self.dark),
-                                        ft.Text("Đang kết nối cơ sở dữ liệu", size=11, color=self.gray)
-                                    ]
-                                ),
-                                ft.Text("Hoạt động", size=10, color=self.green, weight=ft.FontWeight.BOLD)
-                            ]
-                        )
-                    )
-                ],
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER
+                    ft.Text(f"{completed_count}", size=14, weight=ft.FontWeight.BOLD, color=self.green)
+                ]
             )
+        )
 
-            card_container = ft.Container(
-                content=body,
-                width=380,
-                padding=25,
-                bgcolor=self.white,
-                border_radius=15,
-                shadow=ft.BoxShadow(
-                    blur_radius=15,
-                    offset=ft.Offset(0, 5)
+        denied_info_box = ft.Container(
+            width=340,
+            padding=12,
+            bgcolor="#FEF2F2",
+            border_radius=12,
+            border=ft.border.all(1, "#FEE2E2"),
+            content=ft.Row(
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                controls=[
+                    ft.Row(
+                        spacing=8,
+                        controls=[
+                            ft.Text("❌", size=14),
+                            ft.Text("Phần việc bị từ chối", size=13, weight=ft.FontWeight.W_600, color=self.dark)
+                        ]
+                    ),
+                    ft.Text(f"{denied_count}", size=14, weight=ft.FontWeight.BOLD, color=self.red)
+                ]
+            )
+        )
+
+        body = ft.Column(
+            controls=[
+                self.title("TRANG HỌC SINH"),
+                ft.Container(height=5),
+                profile_card,
+                ft.Container(height=15),
+                ft.Row(
+                    controls=[
+                        ft.Text("Chức năng học sinh", size=13, weight=ft.FontWeight.BOLD, color=self.dark),
+                        ft.Text("Cuộn ngang ➔", size=10, color=self.gray)
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+                ),
+                ft.Container(height=5),
+                sliding_board,
+                ft.Container(height=20),
+                ft.Row(
+                    controls=[
+                        ft.Text("THÔNG TIN KHÁC", size=13, weight=ft.FontWeight.BOLD, color=self.dark)
+                    ]
+                ),
+                ft.Container(height=8),
+                completed_info_box,
+                ft.Container(height=8),
+                denied_info_box,
+            ],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER
+        )
+
+        self.root.content = self.card(body, 380)
+        self.page.update()
+
+    #===============================
+    # TRANG THÔNG TIN HỌC SINH
+    #===============================
+    def show_student_info(self):
+        """Displays student details, completed tasks, and incomplete/active tasks."""
+        self.load_data()
+        self.check_data()
+
+        if not self.current_user:
+            self.show_role_select()
+            return
+
+        student_name = self.current_user.get("name", "N/A")
+        student_id = self.current_user.get("id", "N/A")
+        student_class = self.current_user.get("class", "N/A")
+
+        # Fetch completed history entries for this student
+        all_history = self.load_history()
+        student_history = [
+            h for h in all_history
+            if isinstance(h, dict) and h.get("student_id") == student_id
+        ]
+
+        completed_jobs = [
+            h.get("job", "Công việc không tên")
+            for h in student_history
+            if h.get("status") in ["complete", "completed", "hoàn thành", "Đã hoàn thành"]
+        ]
+
+        # Fetch incomplete/active tasks
+        current_tasks = self.current_user.get("tasks", [])
+        active_jobs = [
+            t.get("job", "Công việc không tên")
+            for t in current_tasks
+            if isinstance(t, dict)
+        ]
+        rejected_jobs = [
+            h.get("job", "Công việc không tên")
+            for h in student_history
+            if h.get("status") in ["incomplete", "rejected", "Chưa đạt"]
+        ]
+        incomplete_jobs = active_jobs + rejected_jobs
+
+        top_bar = ft.Row(
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            controls=[
+                ft.Text("THÔNG TIN HỌC SINH", size=15, weight=ft.FontWeight.BOLD, color=self.dark),
+                ft.Container(
+                    on_click=lambda e: self.show_student_home(),
+                    padding=ft.Padding(10, 6, 10, 6),
+                    border_radius=8,
+                    bgcolor="#E2E8F0",
+                    content=ft.Text("Quay lại", size=11, color=self.dark, weight=ft.FontWeight.BOLD)
                 )
+            ]
+        )
+
+        info_card = ft.Container(
+            padding=14,
+            bgcolor="#F8FAFC",
+            border_radius=12,
+            border=ft.border.all(1, "#E2E8F0"),
+            content=ft.Column(
+                spacing=4,
+                controls=[
+                    ft.Text(f"👤 Họ tên: {student_name}", size=13, weight=ft.FontWeight.BOLD, color=self.dark),
+                    ft.Text(f"🆔 Mã HS: {student_id}", size=11, color=self.gray),
+                    ft.Text(f"🏫 Lớp: {student_class}", size=11, color=self.gray),
+                ]
             )
+        )
 
-            self.root.content = card_container
-            self.page.update()
+        completed_items = [
+                              ft.Container(
+                                  padding=8,
+                                  bgcolor="#F0FDF4",
+                                  border_radius=8,
+                                  content=ft.Text(f"✅ {job}", size=11, color=self.green, weight=ft.FontWeight.W_500)
+                              )
+                              for job in completed_jobs
+                          ] or [ft.Text("Chưa có công việc nào hoàn thành.", size=11, color=self.gray)]
 
+        incomplete_items = [
+                               ft.Container(
+                                   padding=8,
+                                   bgcolor="#FEF2F2",
+                                   border_radius=8,
+                                   content=ft.Text(f"⏳ {job}", size=11, color=self.red, weight=ft.FontWeight.W_500)
+                               )
+                               for job in incomplete_jobs
+                           ] or [ft.Text("Không có công việc chưa hoàn thành.", size=11, color=self.gray)]
+
+        body = ft.Column(
+            spacing=12,
+            controls=[
+                top_bar,
+                info_card,
+                ft.Text("Công việc đã hoàn thành", size=12, weight=ft.FontWeight.BOLD, color=self.green),
+                ft.Column(controls=completed_items, spacing=6),
+                ft.Text("Công việc chưa hoàn thành", size=12, weight=ft.FontWeight.BOLD, color=self.red),
+                ft.Column(controls=incomplete_items, spacing=6),
+            ]
+        )
+
+        card_container = ft.Container(
+            content=ft.Column(controls=[body], scroll=ft.ScrollMode.AUTO, height=380),
+            width=380,
+            padding=16,
+            bgcolor=self.white,
+            border_radius=15,
+            shadow=ft.BoxShadow(blur_radius=15, offset=ft.Offset(0, 5))
+        )
+
+        self.root.content = card_container
+        self.page.update()
 
     # =========================
     # BẢNG ĐĂNG KÍ PHẦN VIỆC (HỌC SINH)

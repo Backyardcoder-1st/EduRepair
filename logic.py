@@ -8,6 +8,7 @@ import base64
 import shutil
 import io
 from PIL import Image
+import requests
 
 try:
     _context = ssl.create_default_context()
@@ -4096,7 +4097,6 @@ class AppController:
         self.page.update()
 
     show_student_process = show_student_progress
-
 
     # =========================
     # LÀM MỚI DỮ LIỆU

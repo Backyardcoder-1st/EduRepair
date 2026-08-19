@@ -5,7 +5,14 @@
     "name": "1",
     "password": "1",
     "score": 20,
-    "tasks": []
+    "tasks": [
+      {
+        "job": "test",
+        "time": "test",
+        "note": "test",
+        "status": "pending_registration"
+      }
+    ]
   },
   {
     "class": "A1",

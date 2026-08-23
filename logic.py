@@ -9,6 +9,10 @@ import shutil
 import io
 from PIL import Image
 import requests
+import openpyxl
+from google.oauth2.service_account import Credentials
+import gspread
+import traceback
 
 try:
     _context = ssl.create_default_context()
@@ -2131,6 +2135,11 @@ class AppController:
         self.root.content = card_container
         self.page.update()
 
+#=======CAUTION======CAUTION=======CAUTION======CAUTION=======CAUTION======CAUTION=======CAUTION======CAUTION=======
+
+#FIRST HALF OF THE FILE (test.txt), THE OTHER HALF STARTS IN def show_admin_classes block (test_backup.txt)
+
+#=======CAUTION======CAUTION=======CAUTION======CAUTION=======CAUTION======CAUTION=======CAUTION======CAUTION=======
 
         # =========================
         # TRANG XEM LỚP HỌC (MAIN CLASS PAGE)
@@ -3028,11 +3037,19 @@ class AppController:
             ]
         )
 
-        def approve_registration(student, task):
-            """Approve registration: Updates status to 'in_progress' inside student's tasks list"""
+        def approve_registration(e, student, task):
             for t in student.get("tasks", []):
                 if t.get("job") == task.get("job") and t.get("status") in ["pending_registration", "Chờ xét duyệt"]:
                     t["status"] = "in_progress"
+
+                    # Push row directly to Sheet 1 in Google Sheets
+                    self.export_task_to_google_sheets(
+                        student_name=student.get("name", ""),
+                        student_id=student.get("id", ""),
+                        job_title=task.get("job", ""),
+                        working_time=task.get("time", ""),
+                        student_note=task.get("note", "")
+                    )
                     break
 
             self.save_data()
@@ -3082,7 +3099,7 @@ class AppController:
                                                 content=ft.Text("Từ chối", size=11, color="white", weight=ft.FontWeight.BOLD)
                                             ),
                                             ft.Container(
-                                                on_click=lambda e, s=student, t=task: approve_registration(s, t),
+                                                on_click=lambda e, s=student, t=task: approve_registration(e, s, t),
                                                 padding=ft.Padding(10, 6, 10, 6),
                                                 bgcolor=self.blue,
                                                 border_radius=6,
@@ -4097,6 +4114,40 @@ class AppController:
         self.page.update()
 
     show_student_process = show_student_progress
+
+    def export_task_to_google_sheets(self, student_name, student_id, job_title, working_time, student_note):
+        try:
+            scopes = [
+                "https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/drive"
+            ]
+
+            creds = Credentials.from_service_account_file("credentials.json", scopes=scopes)
+            client = gspread.authorize(creds)
+
+            sheet_key = "1Rw16Tjror8b5b0XSdc1l6wvZbpic71Bt_OwDZbojb1I"
+            sheet = client.open_by_key(sheet_key).sheet1
+
+            # 1. Get all existing values from column B (Name column)
+            col_b_values = sheet.col_values(2)
+
+            # 2. Find the first empty row inside your table (starting after header row 5)
+            next_row = len(col_b_values) + 1
+            if next_row < 6:
+                next_row = 6  # Start filling at Row 6
+
+            # 3. Write directly into columns B to F for that specific row
+            # Column mapping: B=Tên, C=ID, D=Công Việc, E=Thời Gian, F=Ghi Chú
+            cell_range = f"B{next_row}:F{next_row}"
+            new_data = [[student_name, student_id, job_title, working_time, student_note]]
+
+            sheet.update(range_name=cell_range, values=new_data)
+
+            print(f"Data successfully written to row {next_row}!")
+
+        except Exception as err:
+            import traceback
+            traceback.print_exc()
 
     # =========================
     # LÀM MỚI DỮ LIỆU

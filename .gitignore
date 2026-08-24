@@ -19,3 +19,4 @@ __pycache__/
 # Flet build outputs
 build/
 dist/
+credentials.json

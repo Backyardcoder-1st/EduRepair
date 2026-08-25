@@ -3,7 +3,7 @@ from logic import AppController
 import mimetypes
 import os
 
-# Point Google Auth directly to your service account key file
+# Point Google Auth directly to your service account key file.
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credentials.json"
 
 # Set upload secret key

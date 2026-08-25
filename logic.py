@@ -4128,7 +4128,7 @@ class AppController:
             sheet_key = "1Rw16Tjror8b5b0XSdc1l6wvZbpic71Bt_OwDZbojb1I"
             sheet = client.open_by_key(sheet_key).sheet1
 
-            # 1. Get all existing values from column B (Name column)
+            # 1. Get all existing values from column B (Name column)..
             col_b_values = sheet.col_values(2)
 
             # 2. Find the first empty row inside your table (starting after header row 5)

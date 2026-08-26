@@ -1,2 +1,7 @@
 flet==0.22.1
-#test
+gspread
+google-auth
+oauth2client
+pillow
+requests
+openpyxl

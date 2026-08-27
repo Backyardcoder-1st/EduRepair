@@ -40,7 +40,7 @@ jobs:
 
       - name: Build Web App
         run: |
-          flutter --enable-analytics
+          flutter config --enable-analytics
           flet build web --base-url /EduRepair/ --no-interactive
 
       - name: Upload Pages Artifact

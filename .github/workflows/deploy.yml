@@ -40,7 +40,8 @@ jobs:
 
       - name: Build Web App
         run: |
-          flet build web --base-url /EduRepair/
+          flutter --disable-analytics
+          flet build web --base-url /EduRepair/ -vv
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3

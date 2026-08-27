@@ -1,7 +1,4 @@
 flet==0.22.1
-gspread
-google-auth
-oauth2client
 pillow
 requests
 openpyxl

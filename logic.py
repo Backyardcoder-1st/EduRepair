@@ -1798,8 +1798,19 @@ class AppController:
             self.history.append(history_entry)
             self.save_data()
 
+            # EXPORT TO SHEET #3 (COMPLETE)
+            self.export_labor_acceptance_to_excel(
+                student_name=student_obj.get("name", ""),
+                student_class=student_obj.get("class", ""),
+                job_title=task_obj.get("job", ""),
+                job_time=task_obj.get("time", ""),
+                status="Complete",
+                reason=""
+            )
+
             self.show_message(
-                f"Đã duyệt công việc '{task_obj.get('job', 'N/A')}' cho {student_obj.get('name', 'Học sinh')}!")
+                f"Đã duyệt công việc '{task_obj.get('job', 'N/A')}' cho {student_obj.get('name', 'Học sinh')}!"
+            )
             self.show_admin_labor_results()
 
         # Task 3 & 4: Deny Task Handler with Popup Reason Dialog
@@ -1826,9 +1837,11 @@ class AppController:
                     self.page.update()
                     return
 
+                # Remove from student's active pending tasks
                 if isinstance(student_obj.get("tasks"), list) and task_obj in student_obj["tasks"]:
                     student_obj["tasks"].remove(task_obj)
 
+                # Append to history
                 history_entry = {
                     "student_id": student_obj.get("id", ""),
                     "student_name": student_obj.get("name", ""),
@@ -1846,6 +1859,16 @@ class AppController:
 
                 self.history.append(history_entry)
                 self.save_data()
+
+                # EXPORT TO SHEET #3 (INCOMPLETE / DENIED)
+                self.export_labor_acceptance_to_excel(
+                    student_name=student_obj.get("name", ""),
+                    student_class=student_obj.get("class", ""),
+                    job_title=task_obj.get("job", ""),
+                    job_time=task_obj.get("time", ""),
+                    status="Incomplete",
+                    reason=reason_val
+                )
 
                 dialog.open = False
                 self.page.update()
@@ -2010,6 +2033,7 @@ class AppController:
 
         self.root.content = card_container
         self.page.update()
+
 
 
 
@@ -4128,7 +4152,7 @@ class AppController:
             sheet_key = "1Rw16Tjror8b5b0XSdc1l6wvZbpic71Bt_OwDZbojb1I"
             sheet = client.open_by_key(sheet_key).sheet1
 
-            # 1. Get all existing values from column B (Name column)..
+            # 1. Get all existing values from column B (Name column).
             col_b_values = sheet.col_values(2)
 
             # 2. Find the first empty row inside your table (starting after header row 5)
@@ -4148,6 +4172,119 @@ class AppController:
         except Exception as err:
             import traceback
             traceback.print_exc()
+
+    # =========================================================
+    # EXPORT DATA TO SHEET #3 (NGHIỆM THU LAO ĐỘNG)
+    # =========================================================
+    def export_labor_acceptance_to_excel(self, student_name, student_class, job_title, job_time, status, reason=""):
+        """
+        Exports task data into Sheet #3 columns B to F starting at Row 6.
+        Applies ONLY background color formatting to Column G (Trạng thái) without writing text.
+        """
+        is_approved = status.lower() in ["complete", "completed", "hoàn thành"]
+        reason_text = "" if is_approved else reason
+
+        # ---------------------------------------------------------
+        # OPTION A: Google Sheets Integration (gspread)
+        # ---------------------------------------------------------
+        try:
+            creds = Credentials.from_service_account_file(
+                "credentials.json",
+                scopes=["https://www.googleapis.com/auth/spreadsheets"]
+            )
+            gc = gspread.authorize(creds)
+
+            spreadsheet_key = "1Rw16Tjror8b5b0XSdc1l6wvZbpic71Bt_OwDZbojb1I"
+            sh = gc.open_by_key(spreadsheet_key)
+
+            # Target Sheet #3 (index 2)
+            worksheet3 = sh.get_worksheet(2)
+
+            # 1. Read existing values in Column B (matching Sheet #1 method)
+            # Read all values in Column B
+            col_b_values = worksheet3.col_values(2)
+
+            # Find the first empty cell starting from Row 6 (Index 5 in 0-based Python lists)
+            next_row = 6
+            for idx, val in enumerate(col_b_values[5:], start=6):
+                if not val or not str(val).strip():  # Cell is None, empty string, or whitespace
+                    next_row = idx
+                    break
+            else:
+                # If no empty row was found in existing filled cells, place it at the end
+                next_row = max(len(col_b_values) + 1, 6)
+
+            # 3. Data payload mapped across columns B to F:
+            # B=Tên, C=Lớp, D=Công việc, E=Thời gian, F=Lý do
+            row_data = [
+                student_name,   # Col B: Tên
+                student_class,  # Col C: Lớp
+                job_title,      # Col D: Công việc
+                job_time,       # Col E: Thời gian
+                reason_text     # Col F: Lý do (Empty if approved, denied reason if denied)
+            ]
+
+            # Write text data directly to range B:F
+            cell_range = f"B{next_row}:F{next_row}"
+            worksheet3.update(range_name=cell_range, values=[row_data])
+
+            # 4. Paint color ONLY on Column G (Trạng thái) - No text inserted
+            status_cell = f"G{next_row}"
+            if is_approved:
+                # Green fill
+                worksheet3.format(status_cell, {
+                    "backgroundColor": {"red": 0.85, "green": 0.95, "blue": 0.85}
+                })
+            else:
+                # Red fill
+                worksheet3.format(status_cell, {
+                    "backgroundColor": {"red": 0.98, "green": 0.85, "blue": 0.85}
+                })
+
+            print(f"Data successfully written to Sheet #3 at row {next_row}!")
+
+        except Exception as e:
+            print("Google Sheet Export error:", e)
+
+        # ---------------------------------------------------------
+        # OPTION B: Local Excel Workbook (.xlsx via openpyxl)
+        # ---------------------------------------------------------
+        try:
+            excel_file = "danh_sach_lao_dong.xlsx"
+            if os.path.exists(excel_file):
+                wb = openpyxl.load_workbook(excel_file)
+            else:
+                wb = openpyxl.Workbook()
+
+            while len(wb.worksheets) < 3:
+                wb.create_sheet(title=f"Sheet {len(wb.worksheets) + 1}")
+
+            sheet3 = wb.worksheets[2]
+
+            # Find next empty row starting at Column B (Column 2)
+            next_row = 6
+            while sheet3.cell(row=next_row, column=2).value is not None:
+                next_row += 1
+
+            # Populate text into columns B through F (Columns 2-6)
+            sheet3.cell(row=next_row, column=2, value=student_name)   # Col B
+            sheet3.cell(row=next_row, column=3, value=student_class)  # Col C
+            sheet3.cell(row=next_row, column=4, value=job_title)      # Col D
+            sheet3.cell(row=next_row, column=5, value=job_time)       # Col E
+            sheet3.cell(row=next_row, column=6, value=reason_text)    # Col F
+
+            # Paint color ONLY on Column 7 (Column G) without writing any text
+            status_cell = sheet3.cell(row=next_row, column=7)
+            if is_approved:
+                status_cell.fill = openpyxl.styles.PatternFill(start_color="008000", end_color="008000", fill_type="solid")
+            else:
+                status_cell.fill = openpyxl.styles.PatternFill(start_color="CD1C18", end_color="CD1C18", fill_type="solid")
+
+            wb.save(excel_file)
+            print(f"Local Excel Sheet #3 update successful at row {next_row}.")
+
+        except Exception as e:
+            print("Local Excel Export error:", e)
 
     # =========================
     # LÀM MỚI DỮ LIỆU

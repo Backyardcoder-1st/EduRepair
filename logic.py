@@ -676,6 +676,9 @@ class AppController:
     # =========================
 
     def check_data(self):
+        # Automatically purge glitched accounts on startup
+        self.purge_glitched_accounts()
+
         if self.students is None or not isinstance(self.students, list):
             self.students = []
 
@@ -900,6 +903,23 @@ class AppController:
             on_click=self.trigger_upload_picker
         )
 
+    def purge_glitched_accounts(self):
+        """Scans for glitched accounts like '1' and removes them permanently."""
+        if not isinstance(self.students, list):
+            return
+
+        initial_count = len(self.students)
+
+        # Filter out any student named "1" or with ID "1"
+        self.students = [
+            s for s in self.students
+            if isinstance(s, dict) and str(s.get("name", "")).strip() != "1" and str(s.get("id", "")).strip() != "1"
+        ]
+
+        # If glitched accounts were found and removed, save the cleaned data immediately
+        if len(self.students) < initial_count:
+            print("Detected glitched account '1'. Purging from database...")
+            self.save_data()
 
 
     # =========================
@@ -4179,75 +4199,78 @@ class AppController:
     def export_labor_acceptance_to_excel(self, student_name, student_class, job_title, job_time, status, reason=""):
         """
         Exports task data into Sheet #3 columns B to F starting at Row 6.
-        Applies ONLY background color formatting to Column G (Trạng thái) without writing text.
+        - Col F (Lý do): Empty if complete, admin's reason if incomplete.
+        - Col G (Trạng thái): Green fill if complete, Red fill if incomplete.
         """
-        is_approved = status.lower() in ["complete", "completed", "hoàn thành"]
+        import time
+
+        # Normalize status check
+        is_approved = str(status).strip().lower() in ["complete", "completed", "hoàn thành"]
+
+        # 1. Lý do box rule: Empty if complete, admin reason if incomplete
         reason_text = "" if is_approved else reason
 
         # ---------------------------------------------------------
-        # OPTION A: Google Sheets Integration (gspread)
+        # OPTION A: Google Sheets Integration
         # ---------------------------------------------------------
-        try:
-            creds = Credentials.from_service_account_file(
-                "credentials.json",
-                scopes=["https://www.googleapis.com/auth/spreadsheets"]
-            )
-            gc = gspread.authorize(creds)
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                scopes = [
+                    "https://www.googleapis.com/auth/spreadsheets",
+                    "https://www.googleapis.com/auth/drive"
+                ]
+                creds = Credentials.from_service_account_file("credentials.json", scopes=scopes)
+                gc = gspread.authorize(creds)
 
-            spreadsheet_key = "1Rw16Tjror8b5b0XSdc1l6wvZbpic71Bt_OwDZbojb1I"
-            sh = gc.open_by_key(spreadsheet_key)
+                spreadsheet_key = "1Rw16Tjror8b5b0XSdc1l6wvZbpic71Bt_OwDZbojb1I"
+                sh = gc.open_by_key(spreadsheet_key)
+                worksheet3 = sh.get_worksheet(2)
 
-            # Target Sheet #3 (index 2)
-            worksheet3 = sh.get_worksheet(2)
+                col_b = worksheet3.col_values(2)
 
-            # 1. Read existing values in Column B (matching Sheet #1 method)
-            # Read all values in Column B
-            col_b_values = worksheet3.col_values(2)
+                # Find the true last row with text content starting from Row 6
+                last_valid_row = 5
+                for idx, val in enumerate(col_b, start=1):
+                    if idx >= 6 and val and str(val).strip():
+                        last_valid_row = idx
 
-            # Find the first empty cell starting from Row 6 (Index 5 in 0-based Python lists)
-            next_row = 6
-            for idx, val in enumerate(col_b_values[5:], start=6):
-                if not val or not str(val).strip():  # Cell is None, empty string, or whitespace
-                    next_row = idx
-                    break
-            else:
-                # If no empty row was found in existing filled cells, place it at the end
-                next_row = max(len(col_b_values) + 1, 6)
+                next_row = last_valid_row + 1
 
-            # 3. Data payload mapped across columns B to F:
-            # B=Tên, C=Lớp, D=Công việc, E=Thời gian, F=Lý do
-            row_data = [
-                student_name,   # Col B: Tên
-                student_class,  # Col C: Lớp
-                job_title,      # Col D: Công việc
-                job_time,       # Col E: Thời gian
-                reason_text     # Col F: Lý do (Empty if approved, denied reason if denied)
-            ]
+                # Row payload B:F
+                row_data = [
+                    student_name,   # Col B: Tên
+                    student_class,  # Col C: Lớp
+                    job_title,      # Col D: Công việc
+                    job_time,       # Col E: Thời gian
+                    reason_text     # Col F: Lý do (Empty if complete, reason if incomplete)
+                ]
 
-            # Write text data directly to range B:F
-            cell_range = f"B{next_row}:F{next_row}"
-            worksheet3.update(range_name=cell_range, values=[row_data])
+                # Update text fields
+                cell_range = f"B{next_row}:F{next_row}"
+                worksheet3.update(range_name=cell_range, values=[row_data])
 
-            # 4. Paint color ONLY on Column G (Trạng thái) - No text inserted
-            status_cell = f"G{next_row}"
-            if is_approved:
-                # Green fill
-                worksheet3.format(status_cell, {
-                    "backgroundColor": {"red": 0.85, "green": 0.95, "blue": 0.85}
-                })
-            else:
-                # Red fill
-                worksheet3.format(status_cell, {
-                    "backgroundColor": {"red": 0.98, "green": 0.85, "blue": 0.85}
-                })
+                # Paint status color on Column G (Google Sheets)
+                status_cell = f"G{next_row}"
+                if is_approved:
+                    # Darker Solid Green
+                    bg_color = {"red": 0.13, "green": 0.50, "blue": 0.22}
+                else:
+                    # Darker Solid Red
+                    bg_color = {"red": 0.85, "green": 0.19, "blue": 0.15}
 
-            print(f"Data successfully written to Sheet #3 at row {next_row}!")
+                worksheet3.format(status_cell, {"backgroundColor": bg_color})
 
-        except Exception as e:
-            print("Google Sheet Export error:", e)
+                print(f"Data successfully written to Google Sheet #3 at row {next_row}!")
+                break
+
+            except Exception as e:
+                print(f"Google Sheet Export attempt {attempt + 1} failed: {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(2)
 
         # ---------------------------------------------------------
-        # OPTION B: Local Excel Workbook (.xlsx via openpyxl)
+        # OPTION B: Local Excel Workbook (.xlsx)
         # ---------------------------------------------------------
         try:
             excel_file = "danh_sach_lao_dong.xlsx"
@@ -4261,24 +4284,26 @@ class AppController:
 
             sheet3 = wb.worksheets[2]
 
-            # Find next empty row starting at Column B (Column 2)
-            next_row = 6
-            while sheet3.cell(row=next_row, column=2).value is not None:
-                next_row += 1
+            # Scan for last filled text cell in Column B starting at Row 6
+            last_valid_row = 5
+            for r in range(6, sheet3.max_row + 1):
+                val = sheet3.cell(row=r, column=2).value
+                if val is not None and str(val).strip() != "":
+                    last_valid_row = r
 
-            # Populate text into columns B through F (Columns 2-6)
-            sheet3.cell(row=next_row, column=2, value=student_name)   # Col B
-            sheet3.cell(row=next_row, column=3, value=student_class)  # Col C
-            sheet3.cell(row=next_row, column=4, value=job_title)      # Col D
-            sheet3.cell(row=next_row, column=5, value=job_time)       # Col E
-            sheet3.cell(row=next_row, column=6, value=reason_text)    # Col F
+            next_row = last_valid_row + 1
 
-            # Paint color ONLY on Column 7 (Column G) without writing any text
+            # Populate text into columns B through F
+            sheet3.cell(row=next_row, column=2, value=student_name)
+            sheet3.cell(row=next_row, column=3, value=student_class)
+            sheet3.cell(row=next_row, column=4, value=job_title)
+            sheet3.cell(row=next_row, column=5, value=job_time)
+            sheet3.cell(row=next_row, column=6, value=reason_text)
+
+            # Paint status color on Column G
             status_cell = sheet3.cell(row=next_row, column=7)
-            if is_approved:
-                status_cell.fill = openpyxl.styles.PatternFill(start_color="008000", end_color="008000", fill_type="solid")
-            else:
-                status_cell.fill = openpyxl.styles.PatternFill(start_color="CD1C18", end_color="CD1C18", fill_type="solid")
+            fill_color = "C6EFCE" if is_approved else "FFC7CE"  # Light Green vs Light Red
+            status_cell.fill = openpyxl.styles.PatternFill(start_color=fill_color, end_color=fill_color, fill_type="solid")
 
             wb.save(excel_file)
             print(f"Local Excel Sheet #3 update successful at row {next_row}.")

@@ -4300,10 +4300,14 @@ class AppController:
             sheet3.cell(row=next_row, column=5, value=job_time)
             sheet3.cell(row=next_row, column=6, value=reason_text)
 
-            # Paint status color on Column G
+            # Paint status color on Column G (Local Excel)
             status_cell = sheet3.cell(row=next_row, column=7)
-            fill_color = "C6EFCE" if is_approved else "FFC7CE"  # Light Green vs Light Red
-            status_cell.fill = openpyxl.styles.PatternFill(start_color=fill_color, end_color=fill_color, fill_type="solid")
+
+            # "208039" for dark green, "D93025" for dark red
+            fill_color = "208039" if is_approved else "D93025"
+
+            status_cell.fill = openpyxl.styles.PatternFill(start_color=fill_color, end_color=fill_color,
+                                                           fill_type="solid")
 
             wb.save(excel_file)
             print(f"Local Excel Sheet #3 update successful at row {next_row}.")

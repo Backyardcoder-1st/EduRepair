@@ -1,1 +1,25 @@
-[]
+[
+  {
+    "class": "A1",
+    "id": "HS02A1",
+    "name": "Lê Công Định",
+    "password": "Dinóukuna",
+    "score": 0,
+    "tasks": [
+      {
+        "job": "Làm công vierjc nhẹ nhàn lương cao",
+        "note": "Tôi là Dino Sakura",
+        "status": "pending_registration",
+        "time": "36 năm"
+      }
+    ]
+  },
+  {
+    "class": "A2",
+    "id": "HS01A2",
+    "name": "2",
+    "password": "2",
+    "score": 0,
+    "tasks": []
+  }
+]

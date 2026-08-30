@@ -4166,8 +4166,11 @@ class AppController:
                 info = json.loads(creds_json)
                 creds = Credentials.from_service_account_info(info, scopes=scopes)
             elif os.path.exists("/etc/secrets/credentials.json"):
-                # Fallback if using Render Secret File
+                # Render mounts Secret Files in /etc/secrets/
                 creds = Credentials.from_service_account_file("/etc/secrets/credentials.json", scopes=scopes)
+            elif os.path.exists("credentials.json"):
+                # Local fallback
+                creds = Credentials.from_service_account_file("credentials.json", scopes=scopes)
             client = gspread.authorize(creds)
 
             sheet_key = "1Rw16Tjror8b5b0XSdc1l6wvZbpic71Bt_OwDZbojb1I"

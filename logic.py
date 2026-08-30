@@ -13,6 +13,7 @@ import openpyxl
 from google.oauth2.service_account import Credentials
 import gspread
 import traceback
+import time
 
 try:
     _context = ssl.create_default_context()
@@ -401,30 +402,29 @@ class AppController:
                 self.history = []
 
     def save_data(self):
-        # =========================
-        # 1. SAVE STUDENTS (Local & Firebase)
-        # =========================
-        # Local students.json
+        # 1. Save local students.json
         try:
             with open(self.file, "w", encoding="utf-8") as f:
                 json.dump(self.students, f, ensure_ascii=False, indent=2)
         except Exception as e:
             print("Lỗi ghi local students.json:", e)
 
-        # Firebase Realtime DB (Students)
+        # 2. Sync to Firebase Realtime Database (Students)
         try:
             if hasattr(self, "db_url") and self.db_url:
                 req_data = json.dumps(self.students).encode("utf-8")
-                request = urllib.request.Request(self.db_url, data=req_data, method="PUT", headers={"Content-Type": "application/json"})
+                request = urllib.request.Request(
+                    self.db_url,
+                    data=req_data,
+                    method="PUT",
+                    headers={"Content-Type": "application/json"}
+                )
                 with urllib.request.urlopen(request, timeout=5, context=_context) as response:
                     pass
         except Exception as e:
             print("Lỗi ghi Firebase students:", e)
 
-        # =========================
-        # 2. SAVE HISTORY (Local & Top-Level Firebase Root)
-        # =========================
-        # Local history.json
+        # 3. Save local history.json
         try:
             if hasattr(self, "history") and self.history is not None:
                 with open("history.json", "w", encoding="utf-8") as f:
@@ -432,44 +432,22 @@ class AppController:
         except Exception as e:
             print("Lỗi ghi file local history.json:", e)
 
-        # Firebase Realtime DB (History as a separate Root Node)
+        # 4. Sync to Firebase Realtime Database (History)
         try:
             if hasattr(self, "db_url") and self.db_url and hasattr(self, "history") and self.history is not None:
-                # Derive root database URL by stripping 'students.json' or trailing paths
-                base_url = self.db_url.rsplit('/', 1)[0] if '/students' in self.db_url else self.db_url.rsplit('.json', 1)[0]
+                base_url = self.db_url.rsplit('/', 1)[0] if '/students' in self.db_url else \
+                self.db_url.rsplit('.json', 1)[0]
                 history_db_url = f"{base_url}/history.json"
 
                 req_data = json.dumps(self.history).encode("utf-8")
-                request = urllib.request.Request(history_db_url, data=req_data, method="PUT", headers={"Content-Type": "application/json"})
+                request = urllib.request.Request(
+                    history_db_url,
+                    data=req_data,
+                    method="PUT",
+                    headers={"Content-Type": "application/json"}
+                )
                 with urllib.request.urlopen(request, timeout=5, context=_context) as response:
                     pass
-                print("Firebase history save thành công vào node gốc /history")
-        except Exception as e:
-            print("Lỗi ghi Firebase history:", e)
-
-        # =========================
-        # 2. SAVE HISTORY (Local & Top-Level Firebase Root)
-        # =========================
-        # Local history.json
-        try:
-            if hasattr(self, "history") and self.history is not None:
-                with open("history.json", "w", encoding="utf-8") as f:
-                    json.dump(self.history, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            print("Lỗi ghi file local history.json:", e)
-
-        # Firebase Realtime DB (History as a separate Root Node)
-        try:
-            if hasattr(self, "db_url") and self.db_url and hasattr(self, "history") and self.history is not None:
-                # Derive root database URL by stripping 'students.json' or trailing paths
-                base_url = self.db_url.rsplit('/', 1)[0] if '/students' in self.db_url else self.db_url.rsplit('.json', 1)[0]
-                history_db_url = f"{base_url}/history.json"
-
-                req_data = json.dumps(self.history).encode("utf-8")
-                request = urllib.request.Request(history_db_url, data=req_data, method="PUT", headers={"Content-Type": "application/json"})
-                with urllib.request.urlopen(request, timeout=5, context=_context) as response:
-                    pass
-                print("Firebase history save thành công vào node gốc /history")
         except Exception as e:
             print("Lỗi ghi Firebase history:", e)
 
@@ -4159,6 +4137,9 @@ class AppController:
 
     show_student_process = show_student_progress
 
+    # =========================================================
+    # EXPORT DATA TO SHEET #1 (ĐĂNG KÝ PHẦN VIỆC)
+    # =========================================================
     def export_task_to_google_sheets(self, student_name, student_id, job_title, working_time, student_note):
         try:
             scopes = [
@@ -4172,7 +4153,7 @@ class AppController:
             sheet_key = "1Rw16Tjror8b5b0XSdc1l6wvZbpic71Bt_OwDZbojb1I"
             sheet = client.open_by_key(sheet_key).sheet1
 
-            # 1. Get all existing values from column B (Name column).
+            # 1. Get all existing values from column B (Name column)
             col_b_values = sheet.col_values(2)
 
             # 2. Find the first empty row inside your table (starting after header row 5)
@@ -4201,9 +4182,8 @@ class AppController:
         Exports task data into Sheet #3 columns B to F starting at Row 6.
         - Col F (Lý do): Empty if complete, admin's reason if incomplete.
         - Col G (Trạng thái): Green fill if complete, Red fill if incomplete.
+        Handles both live Google Sheets and local Excel fallback.
         """
-        import time
-
         # Normalize status check
         is_approved = str(status).strip().lower() in ["complete", "completed", "hoàn thành"]
 
@@ -4239,11 +4219,11 @@ class AppController:
 
                 # Row payload B:F
                 row_data = [
-                    student_name,   # Col B: Tên
+                    student_name,  # Col B: Tên
                     student_class,  # Col C: Lớp
-                    job_title,      # Col D: Công việc
-                    job_time,       # Col E: Thời gian
-                    reason_text     # Col F: Lý do (Empty if complete, reason if incomplete)
+                    job_title,  # Col D: Công việc
+                    job_time,  # Col E: Thời gian
+                    reason_text  # Col F: Lý do (Empty if complete, reason if incomplete)
                 ]
 
                 # Update text fields
@@ -4306,8 +4286,11 @@ class AppController:
             # "208039" for dark green, "D93025" for dark red
             fill_color = "208039" if is_approved else "D93025"
 
-            status_cell.fill = openpyxl.styles.PatternFill(start_color=fill_color, end_color=fill_color,
-                                                           fill_type="solid")
+            status_cell.fill = openpyxl.styles.PatternFill(
+                start_color=fill_color,
+                end_color=fill_color,
+                fill_type="solid"
+            )
 
             wb.save(excel_file)
             print(f"Local Excel Sheet #3 update successful at row {next_row}.")

@@ -4179,15 +4179,11 @@ class AppController:
     # =========================================================
     def export_labor_acceptance_to_excel(self, student_name, student_class, job_title, job_time, status, reason=""):
         """
-        Exports task data into Sheet #3 columns B to F starting at Row 6.
-        - Col F (Lý do): Empty if complete, admin's reason if incomplete.
-        - Col G (Trạng thái): Green fill if complete, Red fill if incomplete.
-        Handles both live Google Sheets and local Excel fallback.
+        Exports task data into Sheet #3 (Sheet3) starting after row 5.
+        - Preserves pre-existing headers, titles, and legends in 'TrAnG bang tinh du lieu hoc sinh.xlsx'.
+        - Updates Google Sheets (live) and saves to local Excel file.
         """
-        # Normalize status check
         is_approved = str(status).strip().lower() in ["complete", "completed", "hoàn thành"]
-
-        # 1. Lý do box rule: Empty if complete, admin reason if incomplete
         reason_text = "" if is_approved else reason
 
         # ---------------------------------------------------------
@@ -4205,40 +4201,35 @@ class AppController:
 
                 spreadsheet_key = "1Rw16Tjror8b5b0XSdc1l6wvZbpic71Bt_OwDZbojb1I"
                 sh = gc.open_by_key(spreadsheet_key)
-                worksheet3 = sh.get_worksheet(2)
+                worksheet3 = sh.get_worksheet(2)  # Sheet #3
 
                 col_b = worksheet3.col_values(2)
 
-                # Find the true last row with text content starting from Row 6
+                # Find the true last row after header (Row 5)
                 last_valid_row = 5
                 for idx, val in enumerate(col_b, start=1):
-                    if idx >= 6 and val and str(val).strip():
+                    if idx >= 6 and val and str(val).strip() and not str(val).startswith("Column"):
                         last_valid_row = idx
 
                 next_row = last_valid_row + 1
 
-                # Row payload B:F
                 row_data = [
                     student_name,  # Col B: Tên
                     student_class,  # Col C: Lớp
                     job_title,  # Col D: Công việc
                     job_time,  # Col E: Thời gian
-                    reason_text  # Col F: Lý do (Empty if complete, reason if incomplete)
+                    reason_text  # Col F: Lý do
                 ]
 
-                # Update text fields
                 cell_range = f"B{next_row}:F{next_row}"
                 worksheet3.update(range_name=cell_range, values=[row_data])
 
-                # Paint status color on Column G (Google Sheets)
+                # Apply fill color on Column G
                 status_cell = f"G{next_row}"
-                if is_approved:
-                    # Darker Solid Green
-                    bg_color = {"red": 0.13, "green": 0.50, "blue": 0.22}
-                else:
-                    # Darker Solid Red
-                    bg_color = {"red": 0.85, "green": 0.19, "blue": 0.15}
-
+                bg_color = (
+                    {"red": 0.13, "green": 0.50, "blue": 0.22} if is_approved
+                    else {"red": 0.85, "green": 0.19, "blue": 0.15}
+                )
                 worksheet3.format(status_cell, {"backgroundColor": bg_color})
 
                 print(f"Data successfully written to Google Sheet #3 at row {next_row}!")
@@ -4250,42 +4241,38 @@ class AppController:
                     time.sleep(2)
 
         # ---------------------------------------------------------
-        # OPTION B: Local Excel Workbook (.xlsx)
+        # OPTION B: Existing Local Excel File
         # ---------------------------------------------------------
         try:
-            excel_file = "danh_sach_lao_dong.xlsx"
-            if os.path.exists(excel_file):
-                wb = openpyxl.load_workbook(excel_file)
-            else:
-                wb = openpyxl.Workbook()
+            excel_file = "TrAnG bang tinh du lieu hoc sinh.xlsx"
 
-            while len(wb.worksheets) < 3:
-                wb.create_sheet(title=f"Sheet {len(wb.worksheets) + 1}")
+            if not os.path.exists(excel_file):
+                print(f"Error: Template file '{excel_file}' not found in project directory.")
+                return
 
-            sheet3 = wb.worksheets[2]
+            # Load existing workbook with headers intact
+            wb = openpyxl.load_workbook(excel_file)
+            sheet3 = wb["Sheet3"]  # Target Sheet3
 
-            # Scan for last filled text cell in Column B starting at Row 6
+            # Locate the next available row after row 5 (header)
             last_valid_row = 5
             for r in range(6, sheet3.max_row + 1):
                 val = sheet3.cell(row=r, column=2).value
-                if val is not None and str(val).strip() != "":
+                if val is not None and str(val).strip() != "" and not str(val).startswith("Column"):
                     last_valid_row = r
 
             next_row = last_valid_row + 1
 
-            # Populate text into columns B through F
+            # Write data into columns B through F
             sheet3.cell(row=next_row, column=2, value=student_name)
             sheet3.cell(row=next_row, column=3, value=student_class)
             sheet3.cell(row=next_row, column=4, value=job_title)
             sheet3.cell(row=next_row, column=5, value=job_time)
             sheet3.cell(row=next_row, column=6, value=reason_text)
 
-            # Paint status color on Column G (Local Excel)
+            # Apply solid color fill to Column G (Trạng thái)
             status_cell = sheet3.cell(row=next_row, column=7)
-
-            # "208039" for dark green, "D93025" for dark red
-            fill_color = "208039" if is_approved else "D93025"
-
+            fill_color = "208039" if is_approved else "D93025"  # Dark Green or Dark Red
             status_cell.fill = openpyxl.styles.PatternFill(
                 start_color=fill_color,
                 end_color=fill_color,
@@ -4293,7 +4280,7 @@ class AppController:
             )
 
             wb.save(excel_file)
-            print(f"Local Excel Sheet #3 update successful at row {next_row}.")
+            print(f"Local Excel '{excel_file}' updated successfully at row {next_row}.")
 
         except Exception as e:
             print("Local Excel Export error:", e)

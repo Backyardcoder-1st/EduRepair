@@ -20,6 +20,16 @@ try:
 except:
     _context = None
 
+scopes = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
+
+creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+if creds_json:
+    info = json.loads(creds_json)
+    creds = Credentials.from_service_account_info(info, scopes=scopes)
+
 
 class AppController:
 
@@ -1619,10 +1629,51 @@ class AppController:
             self.root.content = card_container
             self.page.update()
 
-    # =========================
-    # ADMIN: NGHIỆM THU LAO ĐỘNG
-    # =========================
+    # =========================================================
+    # CLASS-LEVEL METHOD: APPROVE TASK (FIX FOR ATTRIBUTEERROR)
+    # =========================================================
+    def approve_task(self, student_obj, task_obj, e=None):
+        """Approves a completed labor task and moves it to the history log."""
+        if isinstance(student_obj.get("tasks"), list) and task_obj in student_obj["tasks"]:
+            student_obj["tasks"].remove(task_obj)
 
+        history_entry = {
+            "student_id": student_obj.get("id", ""),
+            "student_name": student_obj.get("name", ""),
+            "class": student_obj.get("class", ""),
+            "job": task_obj.get("job", ""),
+            "time": task_obj.get("time", ""),
+            "note": task_obj.get("note", ""),
+            "proof_image": task_obj.get("proof_image", ""),
+            "status": "complete",
+            "Reason": ""
+        }
+
+        if not hasattr(self, "history") or self.history is None:
+            self.history = []
+
+        self.history.append(history_entry)
+        self.save_data()
+
+        # Export acceptance record if export helper exists
+        if hasattr(self, "export_labor_acceptance_to_excel"):
+            self.export_labor_acceptance_to_excel(
+                student_name=student_obj.get("name", ""),
+                student_class=student_obj.get("class", ""),
+                job_title=task_obj.get("job", ""),
+                job_time=task_obj.get("time", ""),
+                status="Complete",
+                reason=""
+            )
+
+        self.show_message(
+            f"Đã duyệt công việc '{task_obj.get('job', 'N/A')}' cho {student_obj.get('name', 'Học sinh')}!"
+        )
+        self.show_admin_labor_results()
+
+    # =========================================================
+    # ADMIN: NGHIỆM THU LAO ĐỘNG
+    # =========================================================
     def show_admin_labor_results(self):
         """Displays pending task approvals with zoomable proof image modal and deny/approve buttons"""
         self.load_data()
@@ -1700,7 +1751,7 @@ class AppController:
 
             def reset_zoom(e):
                 state["scale"] = 1.0
-                state["x"] = 0.0  # Fixed typo comma here
+                state["x"] = 0.0
                 state["y"] = 0.0
                 update_transform()
 
@@ -1773,45 +1824,7 @@ class AppController:
             dialog.open = True
             self.page.update()
 
-        # Task Approval Handler
-        def approve_task(self, student_obj, task_obj):
-            if isinstance(student_obj.get("tasks"), list) and task_obj in student_obj["tasks"]:
-                student_obj["tasks"].remove(task_obj)
-
-            history_entry = {
-                "student_id": student_obj.get("id", ""),
-                "student_name": student_obj.get("name", ""),
-                "class": student_obj.get("class", ""),
-                "job": task_obj.get("job", ""),
-                "time": task_obj.get("time", ""),
-                "note": task_obj.get("note", ""),
-                "proof_image": task_obj.get("proof_image", ""),
-                "status": "complete",
-                "Reason": ""
-            }
-
-            if not hasattr(self, "history") or self.history is None:
-                self.history = []
-
-            self.history.append(history_entry)
-            self.save_data()
-
-            # EXPORT TO SHEET #3 (COMPLETE)
-            self.export_labor_acceptance_to_excel(
-                student_name=student_obj.get("name", ""),
-                student_class=student_obj.get("class", ""),
-                job_title=task_obj.get("job", ""),
-                job_time=task_obj.get("time", ""),
-                status="Complete",
-                reason=""
-            )
-
-            self.show_message(
-                f"Đã duyệt công việc '{task_obj.get('job', 'N/A')}' cho {student_obj.get('name', 'Học sinh')}!"
-            )
-            self.show_admin_labor_results()
-
-        # Task 3 & 4: Deny Task Handler with Popup Reason Dialog
+        # Deny Task Handler with Popup Reason Dialog
         def open_deny_popup(student_obj, task_obj):
             reason_input = ft.TextField(
                 label="Lý do từ chối",
@@ -1858,15 +1871,15 @@ class AppController:
                 self.history.append(history_entry)
                 self.save_data()
 
-                # EXPORT TO SHEET #3 (INCOMPLETE / DENIED)
-                self.export_labor_acceptance_to_excel(
-                    student_name=student_obj.get("name", ""),
-                    student_class=student_obj.get("class", ""),
-                    job_title=task_obj.get("job", ""),
-                    job_time=task_obj.get("time", ""),
-                    status="Incomplete",
-                    reason=reason_val
-                )
+                if hasattr(self, "export_labor_acceptance_to_excel"):
+                    self.export_labor_acceptance_to_excel(
+                        student_name=student_obj.get("name", ""),
+                        student_class=student_obj.get("class", ""),
+                        job_title=task_obj.get("job", ""),
+                        job_time=task_obj.get("time", ""),
+                        status="Incomplete",
+                        reason=reason_val
+                    )
 
                 dialog.open = False
                 self.page.update()
@@ -1879,7 +1892,7 @@ class AppController:
                 content=ft.Container(
                     width=320,
                     content=ft.Column(
-                        tight=True,  # Correct Flet parameter for min sizing
+                        tight=True,
                         spacing=8,
                         controls=[
                             ft.Text(f"Học sinh: {student_obj.get('name', 'N/A')}", size=11, color=self.gray),
@@ -1981,7 +1994,7 @@ class AppController:
                                                                     weight=ft.FontWeight.BOLD)
                                                 ),
                                                 ft.Container(
-                                                    on_click=lambda e, s=student, t=task: approve_task(s, t),
+                                                    on_click=lambda e, s=student, t=task: self.approve_task(student_obj=s, task_obj=t, e=e),
                                                     padding=ft.Padding(14, 6, 14, 6),
                                                     bgcolor=self.green,
                                                     border_radius=6,
@@ -4147,7 +4160,14 @@ class AppController:
                 "https://www.googleapis.com/auth/drive"
             ]
 
-            creds = Credentials.from_service_account_file("credentials.json", scopes=scopes)
+            # Replace Credentials.from_service_account_file(...) with:
+            creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+            if creds_json:
+                info = json.loads(creds_json)
+                creds = Credentials.from_service_account_info(info, scopes=scopes)
+            elif os.path.exists("/etc/secrets/credentials.json"):
+                # Fallback if using Render Secret File
+                creds = Credentials.from_service_account_file("/etc/secrets/credentials.json", scopes=scopes)
             client = gspread.authorize(creds)
 
             sheet_key = "1Rw16Tjror8b5b0XSdc1l6wvZbpic71Bt_OwDZbojb1I"

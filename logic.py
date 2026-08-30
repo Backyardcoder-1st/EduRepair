@@ -1774,7 +1774,7 @@ class AppController:
             self.page.update()
 
         # Task Approval Handler
-        def approve_task(student_obj, task_obj):
+        def approve_task(self, student_obj, task_obj):
             if isinstance(student_obj.get("tasks"), list) and task_obj in student_obj["tasks"]:
                 student_obj["tasks"].remove(task_obj)
 
@@ -4239,51 +4239,6 @@ class AppController:
                 print(f"Google Sheet Export attempt {attempt + 1} failed: {e}")
                 if attempt < max_retries - 1:
                     time.sleep(2)
-
-        # ---------------------------------------------------------
-        # OPTION B: Existing Local Excel File
-        # ---------------------------------------------------------
-        try:
-            excel_file = "TrAnG bang tinh du lieu hoc sinh.xlsx"
-
-            if not os.path.exists(excel_file):
-                print(f"Error: Template file '{excel_file}' not found in project directory.")
-                return
-
-            # Load existing workbook with headers intact
-            wb = openpyxl.load_workbook(excel_file)
-            sheet3 = wb["Sheet3"]  # Target Sheet3
-
-            # Locate the next available row after row 5 (header)
-            last_valid_row = 5
-            for r in range(6, sheet3.max_row + 1):
-                val = sheet3.cell(row=r, column=2).value
-                if val is not None and str(val).strip() != "" and not str(val).startswith("Column"):
-                    last_valid_row = r
-
-            next_row = last_valid_row + 1
-
-            # Write data into columns B through F
-            sheet3.cell(row=next_row, column=2, value=student_name)
-            sheet3.cell(row=next_row, column=3, value=student_class)
-            sheet3.cell(row=next_row, column=4, value=job_title)
-            sheet3.cell(row=next_row, column=5, value=job_time)
-            sheet3.cell(row=next_row, column=6, value=reason_text)
-
-            # Apply solid color fill to Column G (Trạng thái)
-            status_cell = sheet3.cell(row=next_row, column=7)
-            fill_color = "208039" if is_approved else "D93025"  # Dark Green or Dark Red
-            status_cell.fill = openpyxl.styles.PatternFill(
-                start_color=fill_color,
-                end_color=fill_color,
-                fill_type="solid"
-            )
-
-            wb.save(excel_file)
-            print(f"Local Excel '{excel_file}' updated successfully at row {next_row}.")
-
-        except Exception as e:
-            print("Local Excel Export error:", e)
 
     # =========================
     # LÀM MỚI DỮ LIỆU
